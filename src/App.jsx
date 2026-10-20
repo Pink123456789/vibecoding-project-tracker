@@ -115,6 +115,16 @@ export const SEED_TASKS = [
     createdDate: todayISO(),
   },
   {
+    id: 't5',
+    title: 'Mobile menu does not close',
+    description: 'Tapping a link in the mobile menu leaves the drawer open.',
+    type: 'bug',
+    status: 'todo',
+    assignee: 'Gemini',
+    dueDate: addDays(-2),
+    createdDate: todayISO(),
+  },
+  {
     id: 't4',
     title: 'PRD reviewed',
     description: 'Fill in team, ownership and identity sections of PRD.md.',
@@ -170,6 +180,43 @@ export function TypeChip({ type }) {
 
 const initials = (name) => name.slice(0, 2).toUpperCase();
 
+// --- M8 due-tint ----------------------------------------------------------
+
+const DAY = 24 * 60 * 60 * 1000;
+const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+/** Derive the due state purely from the existing dueDate + status. */
+export function dueState(task, now = new Date()) {
+  if (task.status === 'done') return { key: 'neutral', label: 'Done' };
+  if (!task.dueDate) return { key: 'none', label: 'No due date' };
+  const [y, m, d] = task.dueDate.split('-').map(Number);
+  const days = Math.round((new Date(y, m - 1, d) - startOfDay(now)) / DAY);
+  if (days < 0) return { key: 'overdue', label: `Overdue ${-days}d` };
+  if (days === 0) return { key: 'warning', label: 'Due today' };
+  if (days <= 2) return { key: 'soon', label: days === 1 ? 'Due tomorrow' : 'Due in 2d' };
+  return { key: 'safe', label: `Due in ${days}d` };
+}
+
+export const DUE_STYLE = {
+  safe: { card: '', pill: 'text-due-safe', dot: 'bg-due-safe' },
+  soon: { card: '!bg-due-soon/[0.07]', pill: 'text-due-soon', dot: 'bg-due-soon' },
+  warning: { card: '!bg-due-warning/[0.12] ring-1 ring-due-warning/50', pill: 'text-due-warning', dot: 'bg-due-warning' },
+  overdue: { card: '!bg-due-overdue/[0.14] ring-1 ring-due-overdue/70', pill: 'text-due-overdue font-semibold', dot: 'bg-due-overdue animate-pulse' },
+  neutral: { card: 'opacity-70', pill: 'text-due-neutral', dot: 'bg-due-neutral' },
+  none: { card: '', pill: 'text-ink-muted', dot: 'bg-surface-line' },
+};
+
+export function DuePill({ task, now }) {
+  const ds = dueState(task, now);
+  const st = DUE_STYLE[ds.key];
+  return (
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap font-mono ${st.pill}`} title={task.dueDate ?? ''}>
+      <span aria-hidden="true" className={`h-2 w-2 rounded-full ${st.dot}`} />
+      {ds.label}
+    </span>
+  );
+}
+
 // --- M7 task-owner --------------------------------------------------------
 
 /** Each teammate gets a fixed avatar colour so ownership reads at a glance. */
@@ -190,12 +237,13 @@ export function Avatar({ name, size = 'h-7 w-7 text-[11px]' }) {
   );
 }
 
-function TaskCard({ task, onOpen, onHandOff, flash }) {
+function TaskCard({ task, onOpen, onHandOff, flash, now }) {
   const st = TYPE_STYLE[task.type];
+  const due = DUE_STYLE[dueState(task, now).key];
   return (
     <li
       data-type={task.type}
-      className={`group relative rounded-lg border border-l-[3px] border-surface-line ${st.stripe} bg-surface-card p-3 transition hover:-translate-y-0.5 hover:border-brand-primary/60 focus-within:ring-2 focus-within:ring-brand-primary ${
+      className={`group relative rounded-lg border border-l-[3px] border-surface-line ${st.stripe} bg-surface-card ${due.card} p-3 transition hover:-translate-y-0.5 hover:border-brand-primary/60 focus-within:ring-2 focus-within:ring-brand-primary ${
         flash ? 'ring-2 ring-brand-accent' : ''
       }`}
     >
@@ -218,7 +266,7 @@ function TaskCard({ task, onOpen, onHandOff, flash }) {
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-ink-muted">
-        <span className="whitespace-nowrap font-mono">{task.dueDate ?? "no due date"}</span>
+        <DuePill task={task} now={now} />
         <div className="relative z-10 flex items-center gap-1.5">
           <Avatar name={task.assignee} />
           <label className="sr-only" htmlFor={`handoff-${task.id}`}>
@@ -243,7 +291,7 @@ function TaskCard({ task, onOpen, onHandOff, flash }) {
   );
 }
 
-function Column({ stage, tasks, onOpen, onHandOff, flashId }) {
+function Column({ stage, tasks, onOpen, onHandOff, flashId, now }) {
   const headingId = `col-${stage.id}`;
   return (
     <section
@@ -266,7 +314,7 @@ function Column({ stage, tasks, onOpen, onHandOff, flashId }) {
       ) : (
         <ul className="flex flex-col gap-2">
           {tasks.map((t) => (
-            <TaskCard key={t.id} task={t} onOpen={onOpen} onHandOff={onHandOff} flash={flashId === t.id} />
+            <TaskCard key={t.id} task={t} onOpen={onOpen} onHandOff={onHandOff} flash={flashId === t.id} now={now} />
           ))}
         </ul>
       )}
@@ -466,6 +514,26 @@ function DriverStrip({ tasks }) {
   );
 }
 
+function DueLegend() {
+  const items = [
+    ['safe', 'More than 2 days'],
+    ['soon', '1–2 days'],
+    ['warning', 'Due today'],
+    ['overdue', 'Overdue'],
+    ['neutral', 'Done'],
+  ];
+  return (
+    <ul aria-label="Due date colour legend" className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+      {items.map(([k, label]) => (
+        <li key={k} className="flex items-center gap-1.5">
+          <span aria-hidden="true" className={`h-2 w-2 rounded-full ${DUE_STYLE[k].dot.replace(' animate-pulse', '')}`} />
+          {label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Announces short status messages visually and to screen readers. */
 function Toast({ message }) {
   return (
@@ -483,6 +551,12 @@ export default function App() {
   const [tasks, setTasks] = useLocalStorage('vibetracker.tasks', SEED_TASKS);
   const [editing, setEditing] = useState(null); // a Task (id '' = new) or null
   const [toast, setToast] = useState('');
+  // Re-evaluate due tints every minute so colours change with no user action.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
   const [flashId, setFlashId] = useState(null);
   const toastTimer = useRef(null);
 
@@ -537,6 +611,7 @@ export default function App() {
       {/* TODO M11 anchors: render the Anchor Board above the board. */}
 
       <DriverStrip tasks={tasks} />
+      <DueLegend />
 
       <main className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {STAGES.map((stage) => (
@@ -547,6 +622,7 @@ export default function App() {
             onOpen={setEditing}
             onHandOff={handOff}
             flashId={flashId}
+            now={now}
           />
         ))}
       </main>
