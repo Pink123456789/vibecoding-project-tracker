@@ -126,6 +126,48 @@ export const SEED_TASKS = [
   },
 ];
 
+// --- M6 tag-style ---------------------------------------------------------
+
+/** One source of truth for how each task type looks, everywhere it renders. */
+export const TYPE_STYLE = {
+  feature: {
+    label: 'Feature',
+    stripe: 'border-l-feature',
+    text: 'text-feature',
+    chip: 'bg-feature/15 text-feature ring-1 ring-feature/30',
+  },
+  bug: {
+    label: 'Bug',
+    stripe: 'border-l-bug',
+    text: 'text-bug',
+    chip: 'bg-bug/15 text-bug ring-1 ring-bug/30',
+  },
+};
+
+export function TypeIcon({ type, className = 'h-3.5 w-3.5' }) {
+  return type === 'bug' ? (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 2l1.9 1.9M16 2l-1.9 1.9M9 7.1V6a3 3 0 1 1 6 0v1.1" />
+      <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6z" />
+      <path d="M12 20v-9M6.5 13H3M21 13h-3.5M6 9 3.5 7M18 9l2.5-2M6 17l-2.5 2M18 17l2.5 2" />
+    </svg>
+  ) : (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3l1.9 5.8L20 10l-5 3.6L16.5 20 12 16.4 7.5 20 9 13.6 4 10l6.1-1.2z" />
+    </svg>
+  );
+}
+
+export function TypeChip({ type }) {
+  const st = TYPE_STYLE[type];
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[11px] ${st.chip}`}>
+      <TypeIcon type={type} />
+      {st.label}
+    </span>
+  );
+}
+
 const initials = (name) => name.slice(0, 2).toUpperCase();
 
 function TaskCard({ task, onOpen }) {
@@ -135,9 +177,16 @@ function TaskCard({ task, onOpen }) {
         type="button"
         onClick={() => onOpen(task)}
         aria-label={`Edit task: ${task.title}`}
-        className="w-full rounded-lg border border-surface-line bg-surface-card p-3 text-left transition hover:-translate-y-0.5 hover:border-brand-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+        className={`w-full rounded-lg border border-l-[3px] border-surface-line ${TYPE_STYLE[task.type].stripe} bg-surface-card p-3 text-left transition hover:-translate-y-0.5 hover:border-brand-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary`}
+        data-type={task.type}
       >
-        <h3 className="text-sm font-medium text-ink-primary">{task.title}</h3>
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-sm font-medium text-ink-primary">{task.title}</h3>
+          <span className={`mt-0.5 shrink-0 ${TYPE_STYLE[task.type].text}`} title={TYPE_STYLE[task.type].label}>
+            <TypeIcon type={task.type} className="h-4 w-4" />
+            <span className="sr-only">{TYPE_STYLE[task.type].label}</span>
+          </span>
+        </div>
         <div className="mt-3 flex items-center justify-between text-xs text-ink-muted">
           <span className="font-mono">{task.dueDate ?? 'no due date'}</span>
           <span className="flex items-center gap-1.5">
@@ -260,8 +309,9 @@ function TaskModal({ task, onSave, onDelete, onClose }) {
         className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-surface-line bg-surface-card p-6 shadow-2xl"
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 id="task-modal-title" className="font-display text-lg font-semibold">
+          <h2 id="task-modal-title" className="flex items-center gap-3 font-display text-lg font-semibold">
             {isNew ? 'New task' : 'Edit task'}
+            <TypeChip type={draft.type} />
           </h2>
           <button
             type="button"
@@ -284,13 +334,23 @@ function TaskModal({ task, onSave, onDelete, onClose }) {
             <textarea id="f-desc" rows={3} value={draft.description} onChange={set('description')} className={fieldCls} placeholder="What does done look like?" />
           </div>
 
-          <div>
-            <label htmlFor="f-type" className={labelCls}>Type</label>
-            <select id="f-type" value={draft.type} onChange={set('type')} className={fieldCls}>
-              <option value="feature">Feature</option>
-              <option value="bug">Bug</option>
-            </select>
-          </div>
+          <fieldset>
+            <legend className={labelCls}>Type</legend>
+            <div className="flex gap-2">
+              {Object.keys(TYPE_STYLE).map((t) => (
+                <label
+                  key={t}
+                  className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition focus-within:ring-2 focus-within:ring-brand-primary ${
+                    draft.type === t ? `${TYPE_STYLE[t].chip} border-transparent` : 'border-surface-line text-ink-muted hover:bg-surface-raised'
+                  }`}
+                >
+                  <input type="radio" name="type" value={t} checked={draft.type === t} onChange={set('type')} className="sr-only" />
+                  <TypeIcon type={t} className="h-4 w-4" />
+                  {TYPE_STYLE[t].label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <div>
             <label htmlFor="f-status" className={labelCls}>Status</label>
