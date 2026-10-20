@@ -249,7 +249,7 @@ export function Avatar({ name, size = 'h-7 w-7 text-[11px]' }) {
   );
 }
 
-function TaskCard({ task, onOpen, onHandOff, flash, now }) {
+function TaskCard({ task, onOpen, onHandOff, onCopied, flash, now }) {
   const st = TYPE_STYLE[task.type];
   const due = DUE_STYLE[dueState(task, now).key];
   return (
@@ -277,6 +277,13 @@ function TaskCard({ task, onOpen, onHandOff, flash, now }) {
         </span>
       </div>
 
+      {task.context?.trim() && (
+        <p className="mt-1 flex items-center gap-1 text-[11px] text-ink-muted">
+          <span aria-hidden="true" className="text-brand-primary">◆</span>
+          Context{task.contextTool ? ` for ${task.contextTool}` : ''} · {timeAgo(task.contextUpdatedAt, now)}
+        </p>
+      )}
+
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-ink-muted">
         <DuePill task={task} now={now} />
         <div className="relative z-10 flex items-center gap-1.5">
@@ -299,11 +306,15 @@ function TaskCard({ task, onOpen, onHandOff, flash, now }) {
           </select>
         </div>
       </div>
+
+      <div className="mt-2 flex justify-end border-t border-surface-line/60 pt-2">
+        <CopyContextButton task={task} onCopied={onCopied} now={now} />
+      </div>
     </li>
   );
 }
 
-function Column({ stage, tasks, onOpen, onHandOff, flashId, now }) {
+function Column({ stage, tasks, onOpen, onHandOff, onCopied, flashId, now }) {
   const headingId = `col-${stage.id}`;
   return (
     <section
@@ -326,7 +337,7 @@ function Column({ stage, tasks, onOpen, onHandOff, flashId, now }) {
       ) : (
         <ul className="flex flex-col gap-2">
           {tasks.map((t) => (
-            <TaskCard key={t.id} task={t} onOpen={onOpen} onHandOff={onHandOff} flash={flashId === t.id} now={now} />
+            <TaskCard key={t.id} task={t} onOpen={onOpen} onHandOff={onHandOff} onCopied={onCopied} flash={flashId === t.id} now={now} />
           ))}
         </ul>
       )}
@@ -449,6 +460,82 @@ function ContextField({ draft, setDraft, now }) {
   );
 }
 
+// --- M10 copy-context ----------------------------------------------------
+
+/** Serialise a task into a briefing that reads naturally when pasted into an AI chat. */
+export function buildContextBlock(task, now = new Date()) {
+  const stage = STAGES.find((x) => x.id === task.status)?.label ?? task.status;
+  const due = dueState(task, now).label;
+  const lines = [
+    `# Task: ${task.title}`,
+    '',
+    `- **Type:** ${TYPE_STYLE[task.type].label}`,
+    `- **Status:** ${stage}`,
+    `- **Owner:** ${task.assignee}`,
+    `- **Due:** ${task.dueDate ?? 'not set'} (${due})`,
+    task.contextTool ? `- **Context written for:** ${task.contextTool}` : null,
+    '',
+    '## Description',
+    task.description?.trim() || '_No description._',
+    '',
+    task.context?.trim() ? task.context.trim() : '## Context\n_No context yet._',
+    '',
+    '---',
+    'You are picking up this task from the Vibe Ledger board. Read the context above, ask me if anything is unclear, then continue from "Pick up".',
+  ];
+  return lines.filter((l) => l !== null).join('\n');
+}
+
+export async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Fallback for browsers/contexts without the async clipboard API.
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  }
+}
+
+function CopyIcon({ className = 'h-3.5 w-3.5' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+export function CopyContextButton({ task, onCopied, now, size = 'sm' }) {
+  const copy = async () => {
+    const ok = await copyText(buildContextBlock(task, now));
+    onCopied(ok ? 'Context copied. Paste it into your AI and keep vibing.' : 'Copy failed — select the text manually.', task.id);
+  };
+  const cls =
+    size === 'sm'
+      ? 'gap-1 rounded-md border border-surface-line px-2 py-1 text-[11px] text-ink-muted hover:border-brand-accent hover:text-brand-accent'
+      : 'gap-1.5 rounded-lg border border-brand-accent/50 px-3 py-2 text-sm text-brand-accent hover:bg-brand-accent/10';
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={`Copy context for ${task.title}`}
+      className={`relative z-10 inline-flex items-center font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent ${cls}`}
+    >
+      <CopyIcon className={size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+      Copy Context
+    </button>
+  );
+}
+
 // --- M5 crud-modal -------------------------------------------------------
 
 const emptyTask = () => ({
@@ -469,7 +556,7 @@ const fieldCls =
   'w-full rounded-lg border border-surface-line bg-surface-page px-3 py-2 text-sm text-ink-primary placeholder:text-ink-muted/70 focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/40';
 const labelCls = 'mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-muted';
 
-function TaskModal({ task, onSave, onDelete, onClose, now }) {
+function TaskModal({ task, onSave, onDelete, onClose, onCopied, now }) {
   const isNew = !task.id;
   const [draft, setDraft] = useState({
     context: '',
@@ -619,7 +706,13 @@ function TaskModal({ task, onSave, onDelete, onClose, now }) {
             ) : (
               <span />
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <CopyContextButton
+                task={{ ...draft, title: draft.title || 'Untitled task', dueDate: draft.dueDate || null }}
+                onCopied={onCopied}
+                now={now}
+                size="md"
+              />
               <button type="button" onClick={onClose} className="rounded-lg border border-surface-line px-4 py-2 text-sm hover:bg-surface-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">Cancel</button>
               <button type="submit" className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-surface-page hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
                 {isNew ? 'Create task' : 'Save changes'}
@@ -759,6 +852,7 @@ export default function App() {
             tasks={tasks.filter((t) => t.status === stage.id)}
             onOpen={setEditing}
             onHandOff={handOff}
+            onCopied={notify}
             flashId={flashId}
             now={now}
           />
@@ -771,6 +865,7 @@ export default function App() {
           onSave={saveTask}
           onDelete={deleteTask}
           onClose={() => setEditing(null)}
+          onCopied={(msg) => notify(msg)}
           now={now}
         />
       )}
