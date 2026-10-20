@@ -20,6 +20,9 @@ export default {
           neutral: '#64748B',
         },
       },
+      keyframes: {
+        fadein: { from: { opacity: 0, transform: 'translateY(6px)' }, to: { opacity: 1, transform: 'none' } },
+      },
       fontFamily: {
         display: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],

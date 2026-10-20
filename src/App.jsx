@@ -170,42 +170,80 @@ export function TypeChip({ type }) {
 
 const initials = (name) => name.slice(0, 2).toUpperCase();
 
-function TaskCard({ task, onOpen }) {
+// --- M7 task-owner --------------------------------------------------------
+
+/** Each teammate gets a fixed avatar colour so ownership reads at a glance. */
+export const PERSON_STYLE = {
+  Taygun: 'bg-brand-primary text-surface-page',
+  Claude: 'bg-[#F0A97A] text-surface-page',
+  Gemini: 'bg-brand-accent text-surface-page',
+};
+
+export function Avatar({ name, size = 'h-7 w-7 text-[11px]' }) {
   return (
-    <li>
-      <button
-        type="button"
-        onClick={() => onOpen(task)}
-        aria-label={`Edit task: ${task.title}`}
-        className={`w-full rounded-lg border border-l-[3px] border-surface-line ${TYPE_STYLE[task.type].stripe} bg-surface-card p-3 text-left transition hover:-translate-y-0.5 hover:border-brand-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary`}
-        data-type={task.type}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-medium text-ink-primary">{task.title}</h3>
-          <span className={`mt-0.5 shrink-0 ${TYPE_STYLE[task.type].text}`} title={TYPE_STYLE[task.type].label}>
-            <TypeIcon type={task.type} className="h-4 w-4" />
-            <span className="sr-only">{TYPE_STYLE[task.type].label}</span>
-          </span>
+    <span
+      aria-hidden="true"
+      className={`grid shrink-0 place-items-center rounded-full font-mono font-semibold ${size} ${PERSON_STYLE[name] ?? 'bg-surface-raised text-ink-primary'}`}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
+function TaskCard({ task, onOpen, onHandOff, flash }) {
+  const st = TYPE_STYLE[task.type];
+  return (
+    <li
+      data-type={task.type}
+      className={`group relative rounded-lg border border-l-[3px] border-surface-line ${st.stripe} bg-surface-card p-3 transition hover:-translate-y-0.5 hover:border-brand-primary/60 focus-within:ring-2 focus-within:ring-brand-primary ${
+        flash ? 'ring-2 ring-brand-accent' : ''
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="text-sm font-medium text-ink-primary">
+          {/* Stretched button: the whole card opens the editor. */}
+          <button
+            type="button"
+            onClick={() => onOpen(task)}
+            className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none"
+          >
+            <span className="sr-only">Edit task: </span>
+            {task.title}
+          </button>
+        </h3>
+        <span className={`mt-0.5 shrink-0 ${st.text}`} title={st.label}>
+          <TypeIcon type={task.type} className="h-4 w-4" />
+          <span className="sr-only">{st.label}</span>
+        </span>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-2 text-xs text-ink-muted">
+        <span className="whitespace-nowrap font-mono">{task.dueDate ?? "no due date"}</span>
+        <div className="relative z-10 flex items-center gap-1.5">
+          <Avatar name={task.assignee} />
+          <label className="sr-only" htmlFor={`handoff-${task.id}`}>
+            Hand off {task.title} to
+          </label>
+          <select
+            id={`handoff-${task.id}`}
+            value={task.assignee}
+            onChange={(e) => onHandOff(task, e.target.value)}
+            title="Hand off to…"
+            className="w-24 cursor-pointer truncate rounded-md border border-transparent bg-transparent py-0.5 pl-1 pr-6 text-xs text-ink-primary hover:border-surface-line focus:border-brand-primary focus:outline-none"
+          >
+            {TEAM.map((n) => (
+              <option key={n} value={n}>
+                {n === task.assignee ? n : `Hand off to ${n}`}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="mt-3 flex items-center justify-between text-xs text-ink-muted">
-          <span className="font-mono">{task.dueDate ?? 'no due date'}</span>
-          <span className="flex items-center gap-1.5">
-            <span
-              aria-hidden="true"
-              className="grid h-6 w-6 place-items-center rounded-full bg-surface-raised font-mono text-[10px] text-ink-primary"
-            >
-              {initials(task.assignee)}
-            </span>
-            <span className="sr-only">Assigned to </span>
-            {task.assignee}
-          </span>
-        </div>
-      </button>
+      </div>
     </li>
   );
 }
 
-function Column({ stage, tasks, onOpen }) {
+function Column({ stage, tasks, onOpen, onHandOff, flashId }) {
   const headingId = `col-${stage.id}`;
   return (
     <section
@@ -228,7 +266,7 @@ function Column({ stage, tasks, onOpen }) {
       ) : (
         <ul className="flex flex-col gap-2">
           {tasks.map((t) => (
-            <TaskCard key={t.id} task={t} onOpen={onOpen} />
+            <TaskCard key={t.id} task={t} onOpen={onOpen} onHandOff={onHandOff} flash={flashId === t.id} />
           ))}
         </ul>
       )}
@@ -408,9 +446,61 @@ function TaskModal({ task, onSave, onDelete, onClose }) {
   );
 }
 
+/** Who is driving what — open (not done) tasks per teammate. */
+function DriverStrip({ tasks }) {
+  return (
+    <section aria-label="Who is driving what" className="mb-5 flex flex-wrap gap-3">
+      {TEAM.map((name) => {
+        const open = tasks.filter((t) => t.assignee === name && t.status !== 'done');
+        return (
+          <div key={name} className="flex items-center gap-2 rounded-full border border-surface-line bg-surface-card py-1 pl-1 pr-3 text-sm">
+            <Avatar name={name} />
+            <span className="font-medium">{name}</span>
+            <span className="text-ink-muted">
+              driving <span className="font-mono text-ink-primary">{open.length}</span>
+            </span>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/** Announces short status messages visually and to screen readers. */
+function Toast({ message }) {
+  return (
+    <div aria-live="polite" role="status" className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
+      {message && (
+        <div className="animate-[fadein_200ms_ease-out] rounded-lg border border-brand-accent/40 bg-surface-raised px-4 py-2 text-sm text-ink-primary shadow-xl">
+          {message}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [tasks, setTasks] = useLocalStorage('vibetracker.tasks', SEED_TASKS);
   const [editing, setEditing] = useState(null); // a Task (id '' = new) or null
+  const [toast, setToast] = useState('');
+  const [flashId, setFlashId] = useState(null);
+  const toastTimer = useRef(null);
+
+  const notify = (msg, id = null) => {
+    setToast(msg);
+    setFlashId(id);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => {
+      setToast('');
+      setFlashId(null);
+    }, 2400);
+  };
+
+  const handOff = (task, name) => {
+    if (name === task.assignee) return;
+    setTasks((all) => all.map((x) => (x.id === task.id ? { ...x, assignee: name } : x)));
+    notify(`Handed off to ${name}. They've got it.`, task.id);
+  };
 
   const saveTask = (t) => {
     setTasks((all) =>
@@ -446,6 +536,8 @@ export default function App() {
 
       {/* TODO M11 anchors: render the Anchor Board above the board. */}
 
+      <DriverStrip tasks={tasks} />
+
       <main className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {STAGES.map((stage) => (
           <Column
@@ -453,6 +545,8 @@ export default function App() {
             stage={stage}
             tasks={tasks.filter((t) => t.status === stage.id)}
             onOpen={setEditing}
+            onHandOff={handOff}
+            flashId={flashId}
           />
         ))}
       </main>
@@ -465,6 +559,8 @@ export default function App() {
           onClose={() => setEditing(null)}
         />
       )}
+
+      <Toast message={toast} />
     </div>
   );
 }
