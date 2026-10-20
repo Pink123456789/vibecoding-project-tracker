@@ -44,7 +44,7 @@ export const STAGES = [
 
 // Replace these placeholders with the three names from PRD §8 before M4.
 // They become the only valid values for `Task.assignee`.
-export const TEAM = ['Teammate A', 'Teammate B', 'Teammate C'];
+export const TEAM = ['Taygun', 'Claude', 'Gemini'];
 
 /**
  * A tiny localStorage hook — survives reloads, no library needed.
@@ -84,32 +84,21 @@ export default function App() {
   //   const [anchors, setAnchors] = useLocalStorage('vibetracker.anchors', [...]);
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen bg-surface-page p-6 text-ink-primary">
       <header className="mb-6 flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Vibecoding Project Tracker
+          <h1 className="font-display text-2xl font-semibold text-brand-primary">
+            <span className="mr-1 text-brand-accent" aria-hidden="true">▍</span>Vibe Ledger
           </h1>
-          <p className="text-sm text-slate-500">
-            {/* Replace this line with your team name from PRD §11. */}
-            Team starter
+          <p className="text-sm text-ink-muted">
+            Every task, every prompt, one board.
           </p>
         </div>
       </header>
 
       {/* TODO M11 anchors: render the Anchor Board (Presentation / Demo / Report / Documentation) above the board. */}
 
-      {/*
-        TODO M4 data-model:
-          Render a Kanban board with the four columns from STAGES.
-          Each column should display the tasks whose status matches its id.
-          Pre-populate 3-4 mock tasks so the board isn't empty on first load.
-
-        TODO M5 crud-modal:
-          Add a "+" button that opens a modal with every Task field.
-          Clicking a card should open the same modal in edit mode.
-      */}
-      <main className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-slate-300 text-slate-400">
+      <main className="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-surface-line text-ink-muted">
         Build the four-column board here · M4
       </main>
     </div>
