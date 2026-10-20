@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 /**
  * Vibecoding Project Tracker — starter scaffold.
@@ -128,28 +128,35 @@ export const SEED_TASKS = [
 
 const initials = (name) => name.slice(0, 2).toUpperCase();
 
-function TaskCard({ task }) {
+function TaskCard({ task, onOpen }) {
   return (
-    <li className="rounded-lg border border-surface-line bg-surface-card p-3">
-      <h3 className="text-sm font-medium text-ink-primary">{task.title}</h3>
-      <div className="mt-3 flex items-center justify-between text-xs text-ink-muted">
-        <span className="font-mono">{task.dueDate ?? 'no due date'}</span>
-        <span className="flex items-center gap-1.5">
-          <span
-            aria-hidden="true"
-            className="grid h-6 w-6 place-items-center rounded-full bg-surface-raised font-mono text-[10px] text-ink-primary"
-          >
-            {initials(task.assignee)}
+    <li>
+      <button
+        type="button"
+        onClick={() => onOpen(task)}
+        aria-label={`Edit task: ${task.title}`}
+        className="w-full rounded-lg border border-surface-line bg-surface-card p-3 text-left transition hover:-translate-y-0.5 hover:border-brand-primary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+      >
+        <h3 className="text-sm font-medium text-ink-primary">{task.title}</h3>
+        <div className="mt-3 flex items-center justify-between text-xs text-ink-muted">
+          <span className="font-mono">{task.dueDate ?? 'no due date'}</span>
+          <span className="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="grid h-6 w-6 place-items-center rounded-full bg-surface-raised font-mono text-[10px] text-ink-primary"
+            >
+              {initials(task.assignee)}
+            </span>
+            <span className="sr-only">Assigned to </span>
+            {task.assignee}
           </span>
-          <span className="sr-only">Assigned to </span>
-          {task.assignee}
-        </span>
-      </div>
+        </div>
+      </button>
     </li>
   );
 }
 
-function Column({ stage, tasks }) {
+function Column({ stage, tasks, onOpen }) {
   const headingId = `col-${stage.id}`;
   return (
     <section
@@ -172,7 +179,7 @@ function Column({ stage, tasks }) {
       ) : (
         <ul className="flex flex-col gap-2">
           {tasks.map((t) => (
-            <TaskCard key={t.id} task={t} />
+            <TaskCard key={t.id} task={t} onOpen={onOpen} />
           ))}
         </ul>
       )}
@@ -180,18 +187,201 @@ function Column({ stage, tasks }) {
   );
 }
 
+// --- M5 crud-modal -------------------------------------------------------
+
+const emptyTask = () => ({
+  id: '',
+  title: '',
+  description: '',
+  type: 'feature',
+  status: 'todo',
+  assignee: TEAM[0],
+  dueDate: '',
+  createdDate: todayISO(),
+});
+
+const fieldCls =
+  'w-full rounded-lg border border-surface-line bg-surface-page px-3 py-2 text-sm text-ink-primary placeholder:text-ink-muted/70 focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/40';
+const labelCls = 'mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-muted';
+
+function TaskModal({ task, onSave, onDelete, onClose }) {
+  const isNew = !task.id;
+  const [draft, setDraft] = useState({ ...task, dueDate: task.dueDate ?? '' });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const dialogRef = useRef(null);
+  const titleRef = useRef(null);
+
+  const set = (field) => (e) => setDraft((d) => ({ ...d, [field]: e.target.value }));
+
+  // Focus the title on open, close on Esc, keep Tab inside the dialog.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement;
+    titleRef.current?.focus();
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'Tab' && dialogRef.current) {
+        const els = dialogRef.current.querySelectorAll(
+          'button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])'
+        );
+        const first = els[0];
+        const last = els[els.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      previouslyFocused?.focus?.();
+    };
+  }, [onClose]);
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!draft.title.trim()) return;
+    onSave({ ...draft, title: draft.title.trim(), dueDate: draft.dueDate || null });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-modal-title"
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-surface-line bg-surface-card p-6 shadow-2xl"
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 id="task-modal-title" className="font-display text-lg font-semibold">
+            {isNew ? 'New task' : 'Edit task'}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close dialog"
+            className="rounded-md p-1 text-ink-muted hover:text-ink-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label htmlFor="f-title" className={labelCls}>Title *</label>
+            <input id="f-title" ref={titleRef} required value={draft.title} onChange={set('title')} className={fieldCls} placeholder="e.g. Fix nav overlap on scroll" />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label htmlFor="f-desc" className={labelCls}>Description</label>
+            <textarea id="f-desc" rows={3} value={draft.description} onChange={set('description')} className={fieldCls} placeholder="What does done look like?" />
+          </div>
+
+          <div>
+            <label htmlFor="f-type" className={labelCls}>Type</label>
+            <select id="f-type" value={draft.type} onChange={set('type')} className={fieldCls}>
+              <option value="feature">Feature</option>
+              <option value="bug">Bug</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="f-status" className={labelCls}>Status</label>
+            <select id="f-status" value={draft.status} onChange={set('status')} className={fieldCls}>
+              {STAGES.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="f-assignee" className={labelCls}>Assignee</label>
+            <select id="f-assignee" value={draft.assignee} onChange={set('assignee')} className={fieldCls}>
+              {TEAM.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="f-due" className={labelCls}>Due date</label>
+            <input id="f-due" type="date" value={draft.dueDate} onChange={set('dueDate')} className={`${fieldCls} [color-scheme:dark]`} />
+          </div>
+
+          <p className="text-xs text-ink-muted sm:col-span-2">
+            Created <span className="font-mono">{draft.createdDate}</span>
+          </p>
+
+          <div className="mt-2 flex items-center justify-between gap-3 border-t border-surface-line pt-4 sm:col-span-2">
+            {!isNew ? (
+              confirmDelete ? (
+                <div role="alert" className="flex items-center gap-2 text-sm">
+                  <span className="text-due-overdue">Delete this task? This can't be undone.</span>
+                  <button type="button" onClick={() => onDelete(task.id)} className="rounded-lg bg-due-overdue px-3 py-1.5 font-medium text-white hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Delete</button>
+                  <button type="button" onClick={() => setConfirmDelete(false)} className="rounded-lg border border-surface-line px-3 py-1.5 hover:bg-surface-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">Keep</button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setConfirmDelete(true)} className="rounded-lg border border-due-overdue/50 px-3 py-2 text-sm text-due-overdue hover:bg-due-overdue/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-due-overdue">
+                  Delete task
+                </button>
+              )
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
+              <button type="button" onClick={onClose} className="rounded-lg border border-surface-line px-4 py-2 text-sm hover:bg-surface-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary">Cancel</button>
+              <button type="submit" className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-surface-page hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                {isNew ? 'Create task' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
-  const [tasks] = useLocalStorage('vibetracker.tasks', SEED_TASKS);
+  const [tasks, setTasks] = useLocalStorage('vibetracker.tasks', SEED_TASKS);
+  const [editing, setEditing] = useState(null); // a Task (id '' = new) or null
+
+  const saveTask = (t) => {
+    setTasks((all) =>
+      t.id
+        ? all.map((x) => (x.id === t.id ? t : x))
+        : [...all, { ...t, id: `t${Date.now()}` }]
+    );
+    setEditing(null);
+  };
+
+  const deleteTask = (id) => {
+    setTasks((all) => all.filter((x) => x.id !== id));
+    setEditing(null);
+  };
 
   return (
     <div className="min-h-screen bg-surface-page p-6 text-ink-primary">
-      <header className="mb-6 flex items-end justify-between">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-semibold text-brand-primary">
             <span className="mr-1 text-brand-accent" aria-hidden="true">▍</span>Vibe Ledger
           </h1>
           <p className="text-sm text-ink-muted">Every task, every prompt, one board.</p>
         </div>
+        <button
+          type="button"
+          onClick={() => setEditing(emptyTask())}
+          className="rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-surface-page hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          + New task
+        </button>
       </header>
 
       {/* TODO M11 anchors: render the Anchor Board above the board. */}
@@ -202,9 +392,19 @@ export default function App() {
             key={stage.id}
             stage={stage}
             tasks={tasks.filter((t) => t.status === stage.id)}
+            onOpen={setEditing}
           />
         ))}
       </main>
+
+      {editing && (
+        <TaskModal
+          task={editing}
+          onSave={saveTask}
+          onDelete={deleteTask}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }
