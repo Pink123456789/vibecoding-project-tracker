@@ -93,6 +93,9 @@ export const SEED_TASKS = [
     assignee: 'Claude',
     dueDate: addDays(5),
     createdDate: todayISO(),
+    context: "## Background\nLanding hero for the tracker's public page. Needs to explain the tool in one glance.\n\n## Constraints\n- Tone from DESIGN.md \u00a75: calm, encouraging, short\n- Max 8 words headline, 20 words subline\n\n## Tried so far\n- Asked for 5 options, all too salesy (\"Supercharge your workflow\u2026\")\n\n## Pick up\nAsk for 5 more options in a plain, developer voice; pick one with Taygun.",
+    contextTool: 'Claude',
+    contextUpdatedAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
   },
   {
     id: 't2',
@@ -103,6 +106,9 @@ export const SEED_TASKS = [
     assignee: 'Taygun',
     dueDate: addDays(0),
     createdDate: todayISO(),
+    context: "## Background\nSticky header (h-16) overlaps the first card when the board scrolls.\n\n## Constraints\n- Tailwind only, no custom CSS file\n- Must not break the modal's fixed overlay\n\n## Tried so far\n- `scroll-margin-top` on cards: fixed anchor links, not the overlap\n- Adding `pt-16` to <main>: works but leaves a gap on load\n\n## Pick up\nTry `sticky top-0` + `z-30` on header and remove the fixed positioning.",
+    contextTool: 'Cursor',
+    contextUpdatedAt: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
   },
   {
     id: 't3',
@@ -113,6 +119,9 @@ export const SEED_TASKS = [
     assignee: 'Gemini',
     dueDate: addDays(1),
     createdDate: todayISO(),
+    context: "## Background\nAbout page: who built the tracker and why.\n\n## Constraints\nTwo columns on desktop, one on mobile.\n\n## Tried so far\nGemini generated the layout; review spacing against DESIGN.md.\n\n## Pick up\nCheck heading sizes and contrast, then move to Done.",
+    contextTool: 'Other',
+    contextUpdatedAt: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
   },
   {
     id: 't5',
@@ -123,6 +132,9 @@ export const SEED_TASKS = [
     assignee: 'Gemini',
     dueDate: addDays(-2),
     createdDate: todayISO(),
+    context: "## Background\nOn mobile, tapping a nav link scrolls but the drawer stays open.\n\n## Constraints\nKeep focus management accessible (return focus to menu button).\n\n## Tried so far\nNothing yet.\n\n## Pick up\nClose the drawer in the link onClick and test with keyboard.",
+    contextTool: null,
+    contextUpdatedAt: null,
   },
   {
     id: 't4',
@@ -322,6 +334,121 @@ function Column({ stage, tasks, onOpen, onHandOff, flashId, now }) {
   );
 }
 
+// --- M9 task-context -----------------------------------------------------
+
+export const AI_TOOLS = ['Claude', 'ChatGPT', 'Cursor', 'Lovable', 'Replit', 'Other'];
+
+export const CONTEXT_TEMPLATE = `## Background
+What is this task and why does it matter?
+
+## Constraints
+Stack, files, design rules the AI must respect.
+
+## Tried so far
+Prompts / approaches already used and what happened.
+
+## Pick up
+The exact next step for whoever (or whatever) continues.`;
+
+export function timeAgo(iso, now = new Date()) {
+  if (!iso) return 'never';
+  const sec = Math.max(0, Math.round((now - new Date(iso)) / 1000));
+  if (sec < 45) return 'just now';
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} min ago`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} h ago`;
+  return `${Math.round(h / 24)} d ago`;
+}
+
+/** Tiny Markdown preview: headings, lists, bold, inline code. Escapes HTML first. */
+function renderMarkdown(md) {
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inline = (t) =>
+    esc(t)
+      .replace(/`([^`]+)`/g, '<code class="rounded bg-surface-raised px-1 font-mono text-[12px]">$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  let html = '';
+  let inList = false;
+  for (const line of md.split('\n')) {
+    const li = line.match(/^\s*[-*]\s+(.*)/);
+    if (li) {
+      if (!inList) { html += '<ul class="ml-4 list-disc">'; inList = true; }
+      html += `<li>${inline(li[1])}</li>`;
+      continue;
+    }
+    if (inList) { html += '</ul>'; inList = false; }
+    const h = line.match(/^(#{1,3})\s+(.*)/);
+    if (h) html += `<p class="mt-3 font-display font-semibold text-brand-accent">${inline(h[2])}</p>`;
+    else if (line.trim()) html += `<p>${inline(line)}</p>`;
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+
+function ContextField({ draft, setDraft, now }) {
+  const [tab, setTab] = useState('write');
+  return (
+    <div className="rounded-lg border border-brand-primary/30 bg-brand-primary/[0.04] p-4 sm:col-span-2">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <label htmlFor="f-context" className={labelCls + ' mb-0 text-brand-primary'}>
+          Context — paste-ready briefing for the next AI or teammate
+        </label>
+        <div role="tablist" aria-label="Context view" className="flex rounded-md border border-surface-line text-xs">
+          {['write', 'preview'].map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={`px-2.5 py-1 capitalize focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${tab === t ? 'bg-surface-raised text-ink-primary' : 'text-ink-muted'}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      {tab === 'write' ? (
+        <textarea
+          id="f-context"
+          rows={9}
+          value={draft.context}
+          onChange={(e) =>
+            setDraft((d) => ({ ...d, context: e.target.value, contextUpdatedAt: new Date().toISOString() }))
+          }
+          className={`${fieldCls} font-mono text-[13px] leading-relaxed`}
+          aria-describedby="context-meta"
+        />
+      ) : (
+        <div
+          className="min-h-[13rem] space-y-1 rounded-lg border border-surface-line bg-surface-page px-3 py-2 text-sm"
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(draft.context || 'Nothing yet.') }}
+        />
+      )}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <label htmlFor="f-tool" className="whitespace-nowrap text-xs text-ink-muted">AI tool</label>
+          <select
+            id="f-tool"
+            value={draft.contextTool ?? ''}
+            onChange={(e) => setDraft((d) => ({ ...d, contextTool: e.target.value || null }))}
+            className={`${fieldCls} w-auto py-1 text-xs`}
+          >
+            <option value="">— none —</option>
+            {AI_TOOLS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+        <p id="context-meta" className="text-xs text-ink-muted">
+          Last updated <span className="font-mono">{timeAgo(draft.contextUpdatedAt, now)}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // --- M5 crud-modal -------------------------------------------------------
 
 const emptyTask = () => ({
@@ -333,15 +460,24 @@ const emptyTask = () => ({
   assignee: TEAM[0],
   dueDate: '',
   createdDate: todayISO(),
+  context: CONTEXT_TEMPLATE,
+  contextTool: null,
+  contextUpdatedAt: null,
 });
 
 const fieldCls =
   'w-full rounded-lg border border-surface-line bg-surface-page px-3 py-2 text-sm text-ink-primary placeholder:text-ink-muted/70 focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/40';
 const labelCls = 'mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-muted';
 
-function TaskModal({ task, onSave, onDelete, onClose }) {
+function TaskModal({ task, onSave, onDelete, onClose, now }) {
   const isNew = !task.id;
-  const [draft, setDraft] = useState({ ...task, dueDate: task.dueDate ?? '' });
+  const [draft, setDraft] = useState({
+    context: '',
+    contextTool: null,
+    contextUpdatedAt: null,
+    ...task,
+    dueDate: task.dueDate ?? '',
+  });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const dialogRef = useRef(null);
   const titleRef = useRef(null);
@@ -460,6 +596,8 @@ function TaskModal({ task, onSave, onDelete, onClose }) {
             <label htmlFor="f-due" className={labelCls}>Due date</label>
             <input id="f-due" type="date" value={draft.dueDate} onChange={set('dueDate')} className={`${fieldCls} [color-scheme:dark]`} />
           </div>
+
+          <ContextField draft={draft} setDraft={setDraft} now={now} />
 
           <p className="text-xs text-ink-muted sm:col-span-2">
             Created <span className="font-mono">{draft.createdDate}</span>
@@ -633,6 +771,7 @@ export default function App() {
           onSave={saveTask}
           onDelete={deleteTask}
           onClose={() => setEditing(null)}
+          now={now}
         />
       )}
 
