@@ -1024,6 +1024,22 @@ export default function App() {
         />
       )}
 
+      {/* M13 pitch: one-click reset so every rehearsal / live demo starts from the same dataset. */}
+      <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-surface-line pt-4 text-xs text-ink-muted">
+        <span>Vibe Ledger · UXD Vibecoding Hackathon 2026 · data stays in this browser (localStorage)</span>
+        <button
+          type="button"
+          onClick={() => {
+            setTasks(SEED_TASKS);
+            setAnchors(DEFAULT_ANCHORS);
+            notify('Demo data restored.');
+          }}
+          className="rounded-md border border-surface-line px-2 py-1 hover:text-ink-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+        >
+          Reset demo data
+        </button>
+      </footer>
+
       <Toast message={toast} />
     </div>
   );
