@@ -1,6 +1,6 @@
 # Vibecoding Project Tracker — PRD
 
-**Status:** Hackathon starter PRD · review and fill in the **`<TODO>`** sections before you tag `prd-done`.
+**Status:** Reviewed and completed for team *Vibe Ledger* · tagged `prd-done`.
 
 ---
 
@@ -95,11 +95,13 @@ Fill these in before tagging `prd-done`:
 
 | Slot | Name | GitHub handle |
 |---|---|---|
-| Teammate A | `<TODO>` | `<TODO>` |
-| Teammate B | `<TODO>` | `<TODO>` |
-| Teammate C | `<TODO>` | `<TODO>` |
+| Teammate A | Taygun (human lead) | `@Pink123456789` |
+| Teammate B | Claude (AI pair) | n/a — AI collaborator |
+| Teammate C | Gemini (AI pair) | n/a — AI collaborator |
 
 These three names become the **only** allowed values for `Task.assignee`. No auth — just a dropdown.
+
+> **Team note.** Taygun is working solo. Instead of inventing classmates, the two remaining slots are the AI tools he actually pairs with. "Hand off to Claude" means: this task's next step is an AI session, and the Copy Context button produces the briefing for it.
 
 ## 9. Milestone ownership
 
@@ -107,17 +109,17 @@ Fill in the owner column. Recommended default in **bold**; change if your team h
 
 | # | Tag | Title | Suggested owner | Final owner |
 |---|---|---|---|---|
-| 3 | `design-done` | Design system + voice (DESIGN.md) | **B** | `<TODO>` |
-| 4 | `data-model` | Task model + board view | **A** | `<TODO>` |
-| 5 | `crud-modal` | Add / edit / delete modal | **A** | `<TODO>` |
-| 6 | `tag-style` | Feature / bug colors | **B** | `<TODO>` |
-| 7 | `task-owner` | Owner indicator + handoff | **A** | `<TODO>` |
-| 8 | `due-tint` | Due-date color tinting | **B** | `<TODO>` |
-| 9 | `context` | Context field on the task modal | **C** | `<TODO>` |
-| 10 | `copy-prompt` | "Copy as Prompt Context" button | **C** | `<TODO>` |
-| 11 | `anchors` | Deliverable Anchor Board | **B** | `<TODO>` |
-| 12 | `secret-sauce` | The one thing that makes it yours | **C / All** | `<TODO>` |
-| 13 | `pitch-ready` | Demo + pitch rehearsal | **All** | `<TODO>` |
+| 3 | `design-done` | Design system + voice (DESIGN.md) | **B** | Taygun |
+| 4 | `data-model` | Task model + board view | **A** | Taygun |
+| 5 | `crud-modal` | Add / edit / delete modal | **A** | Taygun |
+| 6 | `tag-style` | Feature / bug colors | **B** | Taygun |
+| 7 | `task-owner` | Owner indicator + handoff | **A** | Taygun |
+| 8 | `due-tint` | Due-date color tinting | **B** | Taygun |
+| 9 | `task-context` | Context field on the task modal | **C** | Taygun |
+| 10 | `copy-context` | "Copy as Prompt Context" button | **C** | Taygun |
+| 11 | `project-deliverables` | Deliverable Anchor Board | **B** | Taygun |
+| 12 | `secret-sauce` | The one thing that makes it yours | **C / All** | Taygun |
+| 13 | `pitch-done` | Demo + pitch rehearsal | **All** | Taygun |
 
 
 Track A owns the state model and task ownership. Track B owns the visuals (and design — M3 runs parallel to M2 so the team starts Phase 3 with the palette already chosen). Track C owns the differentiator features (M9 + M10 — the context field and the Copy-as-Prompt button) and usually leads on M12 secret-sauce. Put your strongest prompter on Track C.
@@ -143,9 +145,18 @@ Keep the Context field of each real task up to date as you work. By the end of t
 
 Fill in:
 
-- **Team name:** `<TODO>`
-- **Tagline (one sentence):** `<TODO>`
-- **Tracker URL after deploy:** `<TODO>` (Vercel will give it to you)
+- **Team name:** Vibe Ledger
+- **Tagline (one sentence):** Every task, every prompt, one board — so no good prompt gets lost.
+- **Tracker URL after deploy:** added after the Vercel deploy in M13.
+
+## 11b. Accessibility (added after the requirements Q&A)
+
+The module leaders asked for accessibility in both design and implementation. Minimum bar for this build:
+
+- Every interactive element is reachable and usable with the keyboard; the modal traps focus and closes on `Esc`.
+- Icon-only buttons carry an `aria-label`; colour is never the only signal (feature/bug and due states also have an icon or text label).
+- Text meets WCAG AA contrast against its background.
+- Toasts are announced through an `aria-live` region.
 
 ## 12. Out of scope (do not build)
 
