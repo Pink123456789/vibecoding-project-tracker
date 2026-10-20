@@ -280,7 +280,7 @@ function TaskCard({ task, onOpen, onHandOff, onCopied, flash, now }) {
       {task.context?.trim() && (
         <p className="mt-1 flex items-center gap-1 text-[11px] text-ink-muted">
           <span aria-hidden="true" className="text-brand-primary">◆</span>
-          Context{task.contextTool ? ` for ${task.contextTool}` : ''} · {timeAgo(task.contextUpdatedAt, now)}
+          Context{task.contextTool ? ` for ${task.contextTool}` : ''}{task.contextUpdatedAt ? ` · ${timeAgo(task.contextUpdatedAt, now)}` : ''}
         </p>
       )}
 
@@ -725,6 +725,99 @@ function TaskModal({ task, onSave, onDelete, onClose, onCopied, now }) {
   );
 }
 
+// --- M11 project-deliverables ---------------------------------------------
+
+export const DEFAULT_ANCHORS = [
+  { id: 'presentation', label: 'Presentation', url: null },
+  { id: 'demo', label: 'Demo', url: null },
+  { id: 'report', label: 'Report', url: null },
+  { id: 'documentation', label: 'Documentation', url: null },
+];
+
+const isUrl = (v) => /^https?:\/\/\S+\.\S+/.test(v);
+
+function AnchorCard({ anchor, onChange }) {
+  const [value, setValue] = useState(anchor.url ?? '');
+  const filled = Boolean(anchor.url);
+  const invalid = value.trim() !== '' && !isUrl(value.trim());
+  const inputId = `anchor-${anchor.id}`;
+
+  const commit = () => {
+    const v = value.trim();
+    if (v === '' ) onChange(anchor.id, null);
+    else if (isUrl(v)) onChange(anchor.id, v);
+  };
+
+  return (
+    <li className={`rounded-xl border p-3 transition ${filled ? 'border-feature/40 bg-feature/[0.06]' : 'border-dashed border-surface-line bg-surface-card'}`}>
+      <div className="mb-2 flex items-center justify-between">
+        <label htmlFor={inputId} className="flex items-center gap-2 text-sm font-semibold">
+          <span
+            aria-hidden="true"
+            className={`h-2.5 w-2.5 rounded-full ${filled ? 'bg-feature' : 'border border-ink-muted'}`}
+          />
+          {anchor.label}
+        </label>
+        <span className={`font-mono text-[11px] ${filled ? 'text-feature' : 'text-ink-muted'}`}>
+          {filled ? 'Linked' : 'Empty'}
+        </span>
+      </div>
+      <div className="flex gap-1.5">
+        <input
+          id={inputId}
+          type="url"
+          inputMode="url"
+          placeholder="https://…"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === 'Enter' && commit()}
+          aria-invalid={invalid}
+          aria-describedby={invalid ? `${inputId}-err` : undefined}
+          className={`${fieldCls} py-1.5 text-xs ${invalid ? 'border-due-overdue' : ''}`}
+        />
+        {filled && (
+          <a
+            href={anchor.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Open ${anchor.label} link in a new tab`}
+            className="grid shrink-0 place-items-center rounded-lg border border-surface-line px-2 text-ink-muted hover:border-brand-accent hover:text-brand-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
+          </a>
+        )}
+      </div>
+      {invalid && (
+        <p id={`${inputId}-err`} className="mt-1 text-[11px] text-due-overdue">
+          Enter a full link starting with http:// or https://
+        </p>
+      )}
+    </li>
+  );
+}
+
+function AnchorBoard({ anchors, onChange }) {
+  const done = anchors.filter((a) => a.url).length;
+  return (
+    <section aria-labelledby="anchors-title" className="mb-6 rounded-xl border border-surface-line bg-surface-page p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 id="anchors-title" className="text-[13px] font-semibold uppercase tracking-wider text-ink-muted">
+          Final deliverables
+        </h2>
+        <span className="font-mono text-xs text-ink-muted">
+          {done}/{anchors.length} linked
+        </span>
+      </div>
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {anchors.map((a) => (
+          <AnchorCard key={a.id} anchor={a} onChange={onChange} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** Who is driving what — open (not done) tasks per teammate. */
 function DriverStrip({ tasks }) {
   return (
@@ -780,6 +873,9 @@ function Toast({ message }) {
 
 export default function App() {
   const [tasks, setTasks] = useLocalStorage('vibetracker.tasks', SEED_TASKS);
+  const [anchors, setAnchors] = useLocalStorage('vibetracker.anchors', DEFAULT_ANCHORS);
+  const setAnchorUrl = (id, url) =>
+    setAnchors((all) => all.map((a) => (a.id === id ? { ...a, url } : a)));
   const [editing, setEditing] = useState(null); // a Task (id '' = new) or null
   const [toast, setToast] = useState('');
   // Re-evaluate due tints every minute so colours change with no user action.
@@ -839,7 +935,7 @@ export default function App() {
         </button>
       </header>
 
-      {/* TODO M11 anchors: render the Anchor Board above the board. */}
+      <AnchorBoard anchors={anchors} onChange={setAnchorUrl} />
 
       <DriverStrip tasks={tasks} />
       <DueLegend />
