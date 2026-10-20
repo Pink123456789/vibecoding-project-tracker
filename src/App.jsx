@@ -249,13 +249,21 @@ export function Avatar({ name, size = 'h-7 w-7 text-[11px]' }) {
   );
 }
 
-function TaskCard({ task, onOpen, onHandOff, onCopied, flash, now }) {
+function TaskCard({ task, onOpen, onHandOff, onCopied, onMove, flash, now }) {
   const st = TYPE_STYLE[task.type];
   const due = DUE_STYLE[dueState(task, now).key];
   return (
     <li
       data-type={task.type}
-      className={`group relative rounded-lg border border-l-[3px] border-surface-line ${st.stripe} bg-surface-card ${due.card} p-3 transition hover:-translate-y-0.5 hover:border-brand-primary/60 focus-within:ring-2 focus-within:ring-brand-primary ${
+      data-task-id={task.id}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', task.id);
+        e.dataTransfer.effectAllowed = 'move';
+        e.currentTarget.classList.add('opacity-40');
+      }}
+      onDragEnd={(e) => e.currentTarget.classList.remove('opacity-40')}
+      className={`group relative cursor-grab active:cursor-grabbing rounded-lg border border-l-[3px] border-surface-line ${st.stripe} bg-surface-card ${due.card} p-3 transition hover:-translate-y-0.5 hover:border-brand-primary/60 focus-within:ring-2 focus-within:ring-brand-primary ${
         flash ? 'ring-2 ring-brand-accent' : ''
       }`}
     >
@@ -265,6 +273,17 @@ function TaskCard({ task, onOpen, onHandOff, onCopied, flash, now }) {
           <button
             type="button"
             onClick={() => onOpen(task)}
+            onKeyDown={(e) => {
+              // Keyboard alternative to drag-and-drop: Alt + ← / → moves the card.
+              if (!e.altKey) return;
+              const i = STAGES.findIndex((x) => x.id === task.status);
+              const next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : -1;
+              if (e.key.startsWith('Arrow') && STAGES[next]) {
+                e.preventDefault();
+                onMove(task.id, STAGES[next].id, true);
+              }
+            }}
+            aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
             className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none"
           >
             <span className="sr-only">Edit task: </span>
@@ -314,12 +333,29 @@ function TaskCard({ task, onOpen, onHandOff, onCopied, flash, now }) {
   );
 }
 
-function Column({ stage, tasks, onOpen, onHandOff, onCopied, flashId, now }) {
+function Column({ stage, tasks, onOpen, onHandOff, onCopied, onMove, flashId, now }) {
   const headingId = `col-${stage.id}`;
+  const [over, setOver] = useState(false);
   return (
     <section
       aria-labelledby={headingId}
-      className="flex min-h-[18rem] flex-col rounded-xl border border-surface-line bg-surface-page/60 p-3"
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (!over) setOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setOver(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        const id = e.dataTransfer.getData('text/plain');
+        if (id) onMove(id, stage.id);
+      }}
+      className={`flex min-h-[18rem] flex-col rounded-xl border p-3 transition ${
+        over ? 'border-brand-accent bg-brand-accent/[0.06]' : 'border-surface-line bg-surface-page/60'
+      }`}
     >
       <h2
         id={headingId}
@@ -337,7 +373,7 @@ function Column({ stage, tasks, onOpen, onHandOff, onCopied, flashId, now }) {
       ) : (
         <ul className="flex flex-col gap-2">
           {tasks.map((t) => (
-            <TaskCard key={t.id} task={t} onOpen={onOpen} onHandOff={onHandOff} onCopied={onCopied} flash={flashId === t.id} now={now} />
+            <TaskCard key={t.id} task={t} onOpen={onOpen} onHandOff={onHandOff} onCopied={onCopied} onMove={onMove} flash={flashId === t.id} now={now} />
           ))}
         </ul>
       )}
@@ -847,7 +883,7 @@ function DueLegend() {
     ['neutral', 'Done'],
   ];
   return (
-    <ul aria-label="Due date colour legend" className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+    <ul aria-label="Due date colour legend" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
       {items.map(([k, label]) => (
         <li key={k} className="flex items-center gap-1.5">
           <span aria-hidden="true" className={`h-2 w-2 rounded-full ${DUE_STYLE[k].dot.replace(' animate-pulse', '')}`} />
@@ -897,6 +933,20 @@ export default function App() {
     }, 2400);
   };
 
+  // --- M12 secret-sauce: drag-and-drop between columns (+ keyboard alternative)
+  const moveTask = (id, status, keepFocus = false) => {
+    const t = tasks.find((x) => x.id === id);
+    if (!t || t.status === status) return;
+    setTasks((all) => all.map((x) => (x.id === id ? { ...x, status } : x)));
+    const label = STAGES.find((x) => x.id === status).label;
+    notify(status === 'done' ? `“${t.title}” shipped. Nice.` : `Moved “${t.title}” to ${label}.`, id);
+    if (keepFocus) {
+      requestAnimationFrame(() =>
+        document.querySelector(`[data-task-id="${id}"] h3 button`)?.focus()
+      );
+    }
+  };
+
   const handOff = (task, name) => {
     if (name === task.assignee) return;
     setTasks((all) => all.map((x) => (x.id === task.id ? { ...x, assignee: name } : x)));
@@ -938,7 +988,14 @@ export default function App() {
       <AnchorBoard anchors={anchors} onChange={setAnchorUrl} />
 
       <DriverStrip tasks={tasks} />
-      <DueLegend />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <DueLegend />
+        <p className="text-xs text-ink-muted">
+          Drag cards between columns — or focus a card and press{' '}
+          <kbd className="rounded border border-surface-line px-1 font-mono">Alt</kbd> +{' '}
+          <kbd className="rounded border border-surface-line px-1 font-mono">←</kbd>/<kbd className="rounded border border-surface-line px-1 font-mono">→</kbd>
+        </p>
+      </div>
 
       <main className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {STAGES.map((stage) => (
@@ -949,6 +1006,7 @@ export default function App() {
             onOpen={setEditing}
             onHandOff={handOff}
             onCopied={notify}
+            onMove={moveTask}
             flashId={flashId}
             now={now}
           />
