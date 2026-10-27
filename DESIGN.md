@@ -83,7 +83,7 @@ Sizes:
 | "+" button label | + New task |
 | Empty column placeholder | Nothing here yet — drop a task in. |
 | Toast after "Copy Context" | Context copied. Paste it into your AI and keep vibing. |
-| Confirm-delete message | Delete this task? This can't be undone. |
+| Confirm-delete message | Delete this task? You can undo right after. |
 | Handoff toast (M7 `task-owner`) | Handed off to {name}. They've got it. |
 
 ## 6. Logo / wordmark
@@ -91,9 +91,23 @@ Sizes:
 - **Product name:** Vibe Ledger
 - **Wordmark style:** The name in Space Grotesk, brand-primary colour, with a small "▍" cursor mark before it in brand-accent.
 
+## 6b. Themes and accessibility modes (post-hackathon)
+
+All colours above are now CSS variables (`src/index.css`), so one component set serves every mode:
+
+- **Light theme** — same hues, darkened until text reaches 4.5:1 on white and on the tinted due-state cards.
+- **High contrast** — black background, white text and borders, saturated accents, 3 px focus outline (WCAG 1.4.6 AAA intent).
+- **Red–green friendly** — feature/bug become blue/orange; due states run sky blue → yellow → orange → vermillion (Okabe–Ito palette), ordered by lightness as well as hue.
+- **Blue–yellow friendly** — feature/bug become cyan/red; due states avoid blue–yellow pairs.
+- **Grayscale** — a page-wide grayscale filter that proves nothing depends on colour: due states also differ by dot shape (circle, diamond for today, square for overdue) and always carry a text label.
+- **Readable font** — Atkinson Hyperlegible plus WCAG 1.4.12 text spacing.
+- **Motion** — the toast fade, card lift and overdue pulse switch off with "Reduce motion" or the OS setting.
+
+Small screens: one column at a time behind a pill-shaped tab bar, a full-screen task editor with a sticky action bar, a floating round "+" button within thumb reach, and 44 × 44 px minimum touch targets.
+
 ## 7. Out of scope (this hackathon)
 
-- A light mode toggle. We ship dark only.
+- ~~A light mode toggle. We ship dark only.~~ Added after the hackathon as part of the accessibility panel (§6b).
 - Multiple themes.
 - Animations beyond short fades and the card hover lift.
 - A custom icon set — inline SVG icons only.

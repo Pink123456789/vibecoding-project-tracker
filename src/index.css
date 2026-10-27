@@ -2,13 +2,189 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
-  height: 100%;
+/*
+ * Theme tokens (DESIGN.md §2). Values are "R G B" triplets so Tailwind can add
+ * opacity (bg-feature/15). The Accessibility panel sets these attributes on <html>:
+ *   data-theme  = dark | light | contrast
+ *   data-cvd    = none | redgreen | blueyellow | mono   (colour-vision palettes)
+ *   data-font   = default | readable
+ *   data-motion = system | reduce | full
+ * Text size is set as the root font-size, so every rem-based size scales (WCAG 1.4.4).
+ */
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --brand-primary: 139 124 255;
+  --brand-accent: 34 211 238;
+  --surface-page: 14 16 21;
+  --surface-card: 24 27 35;
+  --surface-raised: 33 37 47;
+  --surface-line: 52 58 72;
+  --ink-primary: 232 234 240;
+  --ink-muted: 160 168 186;
+  --feature: 52 211 153;
+  --bug: 251 113 133;
+  --due-safe: 94 234 212;
+  --due-soon: 252 211 77;
+  --due-warning: 251 146 60;
+  --due-overdue: 248 90 112;
+  --due-neutral: 148 158 178;
+  --person-taygun: 139 124 255;
+  --person-claude: 240 169 122;
+  --person-gemini: 34 211 238;
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --brand-primary: 91 71 224;
+  --brand-accent: 8 118 143;
+  --surface-page: 244 245 241;
+  --surface-card: 255 255 255;
+  --surface-raised: 234 236 241;
+  --surface-line: 196 202 213;
+  --ink-primary: 21 24 33;
+  --ink-muted: 79 87 104;
+  --feature: 3 105 76;
+  --bug: 190 18 60;
+  --due-safe: 15 118 110;
+  --due-soon: 140 90 0;
+  --due-warning: 160 52 10;
+  --due-overdue: 190 18 60;
+  --due-neutral: 90 104 126;
+  --person-taygun: 91 71 224;
+  --person-claude: 180 83 9;
+  --person-gemini: 8 118 143;
+}
+
+/* High contrast: pure black, white text and borders, saturated accents (WCAG 1.4.6 AAA). */
+[data-theme='contrast'] {
+  color-scheme: dark;
+  --brand-primary: 200 190 255;
+  --brand-accent: 0 229 255;
+  --surface-page: 0 0 0;
+  --surface-card: 10 10 12;
+  --surface-raised: 40 40 46;
+  --surface-line: 235 235 240;
+  --ink-primary: 255 255 255;
+  --ink-muted: 228 230 236;
+  --feature: 64 255 170;
+  --bug: 255 140 170;
+  --due-safe: 0 229 255;
+  --due-soon: 255 235 59;
+  --due-warning: 255 170 60;
+  --due-overdue: 255 100 120;
+  --due-neutral: 205 210 220;
+  --person-taygun: 200 190 255;
+  --person-claude: 255 190 140;
+  --person-gemini: 0 229 255;
+}
+[data-theme='contrast'] :focus-visible {
+  outline: 3px solid rgb(var(--brand-accent));
+  outline-offset: 2px;
+}
+[data-theme='contrast'] a {
+  text-decoration: underline;
+}
+
+/*
+ * Colour-vision palettes. Red–green (protanopia / deuteranopia) uses the
+ * Okabe–Ito palette: blue vs orange instead of green vs pink, and due states
+ * ordered by lightness. Blue–yellow (tritanopia) uses cyan vs red.
+ */
+[data-cvd='redgreen'] {
+  --feature: 86 180 233;
+  --bug: 230 159 0;
+  --due-safe: 86 180 233;
+  --due-soon: 240 228 66;
+  --due-warning: 230 159 0;
+  --due-overdue: 240 125 45;
+}
+[data-theme='light'][data-cvd='redgreen'] {
+  --feature: 0 105 165;
+  --bug: 138 72 0;
+  --due-safe: 0 105 165;
+  --due-soon: 100 88 0;
+  --due-warning: 138 72 0;
+  --due-overdue: 150 48 0;
+}
+[data-cvd='blueyellow'] {
+  --feature: 0 200 210;
+  --bug: 255 105 125;
+  --due-safe: 0 200 210;
+  --due-soon: 255 180 205;
+  --due-warning: 255 120 90;
+  --due-overdue: 255 95 110;
+}
+[data-theme='light'][data-cvd='blueyellow'] {
+  --feature: 0 98 108;
+  --bug: 168 14 50;
+  --due-safe: 0 98 108;
+  --due-soon: 138 38 94;
+  --due-warning: 158 52 22;
+  --due-overdue: 140 0 28;
+}
+/* Grayscale: shows that every state is still readable without any colour (WCAG 1.4.1). */
+html[data-cvd='mono']::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  backdrop-filter: grayscale(1);
+  -webkit-backdrop-filter: grayscale(1);
+}
+
+/* Readable font + WCAG 1.4.12 text spacing. */
+[data-font='readable'] {
+  --font-sans: 'Atkinson Hyperlegible', Verdana, sans-serif;
+  --font-display: 'Atkinson Hyperlegible', Verdana, sans-serif;
+}
+[data-font='readable'] body {
+  letter-spacing: 0.03em;
+  word-spacing: 0.12em;
+  line-height: 1.6;
+}
+
+/* Reduced motion: honour the OS setting by default, or force it from the panel (WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion='full']) *,
+  html:not([data-motion='full']) *::before,
+  html:not([data-motion='full']) *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+[data-motion='reduce'] *,
+[data-motion='reduce'] *::before,
+[data-motion='reduce'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
 }
 
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #f8fafc; /* slate-50 */
-  color: #0f172a;            /* slate-900 */
+  font-family: var(--font-sans);
+  background-color: rgb(var(--surface-page));
+  color: rgb(var(--ink-primary));
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide scrollbar on the mobile column tabs while keeping them scrollable. */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
 }

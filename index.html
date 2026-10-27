@@ -1,15 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Vibe Ledger — a Kanban tracker for vibecoding tasks and the prompts behind them." />
+    <meta name="theme-color" content="#0E1015" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Vibe Ledger" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
     <title>Vibe Ledger</title>
+    <script>
+      // Apply saved accessibility settings before first paint (no flash of the wrong theme or size).
+      try {
+        var p = JSON.parse(localStorage.getItem('vibetracker.prefs') || '{}');
+        var r = document.documentElement;
+        var t = p.theme || 'system';
+        if (t === 'system') t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        r.dataset.theme = t;
+        r.dataset.cvd = p.cvd || 'none';
+        r.dataset.font = p.font || 'default';
+        r.dataset.motion = p.motion || 'system';
+        if (p.textSize) r.style.fontSize = p.textSize + '%';
+      } catch (e) {}
+    </script>
   </head>
   <body class="bg-surface-page text-ink-primary font-sans antialiased">
+    <noscript>Vibe Ledger needs JavaScript to run.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

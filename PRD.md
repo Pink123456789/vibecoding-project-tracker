@@ -58,6 +58,9 @@ Task = {
   context: string,               // M9 context — curated briefing for the next AI / teammate
   contextTool: string | null,    // M9 context — 'Claude' | 'ChatGPT' | 'Cursor' | 'Lovable' | 'Replit' | 'Other'
   contextUpdatedAt: string|null, // M9 context — ISO timestamp set automatically on save
+
+  // Added after the hackathon (§14):
+  contextHistory: Array<{ at: string, tool: string|null, text: string }>, // earlier Context versions, newest first, max 20
 }
 
 // One of four pinned deliverable slots.
@@ -163,7 +166,7 @@ The module leaders asked for accessibility in both design and implementation. Mi
 - Authentication / accounts.
 - Real GitHub integration.
 - A real backend / shared database.
-- Mobile responsive — desktop only is fine.
+- ~~Mobile responsive — desktop only is fine.~~ Moved into scope after the hackathon (§14), following the Small Screen Usability session.
 - Multi-team support.
 - Real-time collaboration.
 
@@ -174,6 +177,27 @@ The hackathon is "done" when all 13 milestone tags are pushed to your repo and v
 - The board loads on Vercel without errors.
 - The "Copy as Prompt Context" demo works on stage.
 - 5 min pitch is rehearsed.
+
+## 14. Post-hackathon iteration (week 4)
+
+After the hackathon the tracker was extended with the accessibility, usability and data features below. Each one is listed here so it can be traced to a requirement in the coursework report. Preferences are stored in `localStorage` under `vibetracker.prefs`.
+
+| Area | Feature | Where |
+|---|---|---|
+| Accessibility | Themes: match device, dark, light, high contrast | Accessibility panel |
+| Accessibility | Colour-vision palettes: red–green (Okabe–Ito), blue–yellow, grayscale | Accessibility panel |
+| Accessibility | Text size 100 / 112.5 / 125 / 150 % (root font size, everything scales) | Accessibility panel |
+| Accessibility | Readable font (Atkinson Hyperlegible) with wider text spacing | Accessibility panel |
+| Accessibility | Reduce motion (follows the OS setting by default) | Accessibility panel |
+| Accessibility | Read aloud (Web Speech API): any card, the task editor, or a whole-board summary; adjustable speed | Speaker buttons |
+| Accessibility | Skip link, keyboard shortcuts (N, /, ?, A, Ctrl/⌘+Z, Alt+arrows) that can be switched off, help dialog | Header, Help |
+| Usability | Undo for moves, hand-offs, deletes, imports and demo resets | Message bar / Ctrl+Z |
+| Usability | Search (title, description, context) and filters (owner, type, due state); driver strip filters by owner | Above the board |
+| Usability | First-visit welcome with the three core steps | Top of the board |
+| Small screens | One-column tab bar, "Move to" menu instead of drag, full-screen editor, floating New-task button, 44 px touch targets, collapsible deliverables, installable (web app manifest) | Phones |
+| Data | Export / import a JSON backup with validation; prompt history with view and restore | Accessibility & data panel, task editor |
+
+**Verification.** Automated checks with axe-core (WCAG 2.2 A/AA + best practice) across 30 combinations of theme, colour palette, screen size and open dialog report 0 violations. Lighthouse accessibility went from 96 to 100 on both mobile and desktop.
 
 ---
 
