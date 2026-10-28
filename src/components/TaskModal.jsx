@@ -64,13 +64,23 @@ function ContextHistory({ history, onRestore }) {
   );
 }
 
+/** Groups the editor into Details / Planning / Context (added after user testing). */
+function SectionHeading({ title, hint, first = false }) {
+  return (
+    <div className={`sm:col-span-2 ${first ? '' : 'mt-2 border-t border-surface-line pt-5'}`}>
+      <h3 className="font-display text-base font-semibold text-ink-primary">{title}</h3>
+      <p className="text-sm text-ink-muted">{hint}</p>
+    </div>
+  );
+}
+
 function ContextField({ draft, setDraft, now, onRestored }) {
   const [tab, setTab] = useState('write');
   return (
-    <div className="rounded-lg border border-brand-primary/40 bg-brand-primary/[0.05] p-3 sm:col-span-2 sm:p-4">
+    <div className="rounded-lg border border-surface-line bg-surface-page/60 p-3 sm:col-span-2 sm:p-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <label htmlFor="f-context" className={labelCls + ' mb-0 text-brand-primary'}>
-          Context — paste-ready briefing for the next AI or teammate
+        <label htmlFor="f-context" className={labelCls + ' mb-0'}>
+          Briefing
         </label>
         <div role="tablist" aria-label="Context view" className="flex rounded-md border border-surface-line text-xs">
           {['write', 'preview'].map((t) => (
@@ -191,6 +201,8 @@ export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, spee
       </DialogHeader>
 
       <form onSubmit={submit} noValidate className="grid flex-1 grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-6">
+        <SectionHeading first title="Details" hint="What the task is." />
+
         <div className="sm:col-span-2">
           <label htmlFor="f-title" className={labelCls}>
             Title <span aria-hidden="true">*</span>
@@ -208,7 +220,7 @@ export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, spee
               set('title')(e);
               if (e.target.value.trim()) setTitleError(false);
             }}
-            className={`${fieldCls} ${titleError ? '!border-due-overdue' : ''}`}
+            className={`${fieldCls} !py-2.5 !text-base font-medium ${titleError ? '!border-due-overdue' : ''}`}
             placeholder="e.g. Fix nav overlap on scroll"
           />
           {titleError && (
@@ -225,9 +237,9 @@ export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, spee
           <textarea id="f-desc" rows={3} value={draft.description} onChange={set('description')} className={fieldCls} placeholder="What does done look like?" />
         </div>
 
-        <fieldset>
+        <fieldset className="sm:col-span-2">
           <legend className={labelCls}>Type</legend>
-          <div className="flex gap-2">
+          <div className="flex gap-2 sm:max-w-sm">
             {Object.keys(TYPE_STYLE).map((t) => (
               <label
                 key={t}
@@ -243,6 +255,9 @@ export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, spee
           </div>
         </fieldset>
 
+        <SectionHeading title="Planning" hint="Where it stands, who owns it and when it’s due." />
+
+        <div className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-3">
         <div>
           <label htmlFor="f-status" className={labelCls}>
             Status
@@ -297,6 +312,9 @@ export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, spee
           </label>
           <input id="f-due" type="date" value={draft.dueDate} onChange={set('dueDate')} className={fieldCls} />
         </div>
+        </div>
+
+        <SectionHeading title="Context" hint="Background, what you’ve tried and where to pick up — ready to paste into an AI." />
 
         <ContextField draft={draft} setDraft={setDraft} now={now} onRestored={() => onNotify('Earlier version restored. Save to keep it.')} />
 

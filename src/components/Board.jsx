@@ -126,6 +126,16 @@ function TaskCard({ task, onOpen, onHandOff, onCopied, onMove, flash, now, speec
             </option>
           ))}
         </select>
+        {/* Visible Edit button (added after user testing: clicking the card itself was not discoverable). */}
+        <button
+          type="button"
+          onClick={() => onOpen(task)}
+          aria-label={`Edit task: ${task.title}`}
+          className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-surface-line px-2.5 py-1 text-[0.75rem] font-medium text-ink-primary transition hover:border-brand-primary hover:text-brand-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary md:min-h-[32px]"
+        >
+          <Icon.pencil className="h-3.5 w-3.5" />
+          Edit
+        </button>
         <SpeakButton
           speech={speech}
           id={`card-${task.id}`}

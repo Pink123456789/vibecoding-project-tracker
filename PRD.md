@@ -208,6 +208,15 @@ After the hackathon the tracker was extended with the accessibility, usability a
 - **Free-text assignee.** The editor's Assignee field is a text box with suggestions (`<datalist>`) from everyone already on the board. Names are trimmed and matched case-insensitively, so "claude" reuses "Claude". New people appear in the hand-off menu, the driver strip and the owner filter, each with a stable avatar colour.
 - **Out of scope / future work:** real accounts, password checks and a shared synced board need a backend (e.g. Supabase or Firebase Auth).
 
+## 16. Changes after user testing
+
+A think-aloud test with one participant from outside the university gave a SUS score of 67.5. The participant found **editing a task** hardest and said the task editor looked generic. Two changes followed:
+
+- **Visible Edit button on every card.** Editing used to require clicking the card itself, which nothing on the card signalled (Norman: signifiers; Nielsen #6 recognition rather than recall).
+- **Clearer task editor.** Fields are grouped under Details, Planning and Context; labels are sentence case at normal size instead of small upper-case; the title field is larger (Nielsen #8 aesthetic and minimalist design). The new label style is used on every form for consistency.
+
+Screenshots 26–29 in `docs/evidence/` show before and after. axe still reports 0 violations across all 54 scenarios.
+
 ---
 
 *PRD version: hackathon-starter v1 · maintained by Prof. Dr. Ignacio Alvarez*
