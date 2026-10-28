@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { STAGES, TEAM, buildContextBlock, copyText, dueState, taskToSpeech, timeAgo } from '../lib/model.js';
+import { STAGES, buildContextBlock, copyText, dueState, taskToSpeech, timeAgo } from '../lib/model.js';
 import { Avatar, DUE_STYLE, DuePill, Icon, SpeakButton, TYPE_STYLE, TypeIcon } from './ui.jsx';
 
 // --- M10 Copy Context -----------------------------------------------------------
@@ -28,7 +28,7 @@ export function CopyContextButton({ task, onCopied, now, size = 'sm' }) {
 
 // --- Task card ----------------------------------------------------------------------
 
-function TaskCard({ task, onOpen, onHandOff, onCopied, onMove, flash, now, speech, prefs }) {
+function TaskCard({ task, onOpen, onHandOff, onCopied, onMove, flash, now, speech, prefs, people }) {
   const st = TYPE_STYLE[task.type];
   const due = DUE_STYLE[dueState(task, now).key];
   return (
@@ -100,7 +100,7 @@ function TaskCard({ task, onOpen, onHandOff, onCopied, onMove, flash, now, speec
             title="Hand off to…"
             className="min-h-[44px] w-28 cursor-pointer truncate rounded-md border border-surface-line/0 bg-transparent py-0.5 pl-1 pr-6 text-xs text-ink-primary hover:border-surface-line focus:border-brand-primary focus:outline-none md:min-h-0 md:w-24"
           >
-            {TEAM.map((n) => (
+            {people.map((n) => (
               <option key={n} value={n}>
                 {n === task.assignee ? n : `Hand off to ${n}`}
               </option>
@@ -141,7 +141,7 @@ function TaskCard({ task, onOpen, onHandOff, onCopied, onMove, flash, now, speec
 
 // --- Column (drop target) ------------------------------------------------------------
 
-function Column({ stage, tasks, total, filtered, onOpen, onHandOff, onCopied, onMove, flashId, now, speech, prefs, hiddenOnMobile }) {
+function Column({ stage, tasks, total, filtered, onOpen, onHandOff, onCopied, onMove, flashId, now, speech, prefs, people, hiddenOnMobile }) {
   const headingId = `col-${stage.id}`;
   const [over, setOver] = useState(false);
   return (
@@ -194,6 +194,7 @@ function Column({ stage, tasks, total, filtered, onOpen, onHandOff, onCopied, on
               now={now}
               speech={speech}
               prefs={prefs}
+              people={people}
             />
           ))}
         </ul>

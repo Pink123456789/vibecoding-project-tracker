@@ -8,6 +8,7 @@ import {
   makeBackup,
   matchesFilters,
   parseBackup,
+  peopleFrom,
   seedTasks,
   stageLabel,
   todayISO,
@@ -18,7 +19,9 @@ import { Board } from './components/Board.jsx';
 import { TaskModal } from './components/TaskModal.jsx';
 import { AnchorBoard, DriverStrip, FilterBar, Legend, Toast, Welcome } from './components/Panels.jsx';
 import { HelpDialog, SettingsDialog } from './components/Settings.jsx';
-import { Icon, SpeakButton, btnGhost, btnPrimary, iconBtn } from './components/ui.jsx';
+import { LoginScreen } from './components/Auth.jsx';
+import { ProfilePage } from './components/Profile.jsx';
+import { Avatar, Icon, SpeakButton, btnGhost, btnPrimary, iconBtn } from './components/ui.jsx';
 
 /**
  * Vibe Ledger — a Kanban board for vibecoding tasks and the prompts behind them.
@@ -26,13 +29,68 @@ import { Icon, SpeakButton, btnGhost, btnPrimary, iconBtn } from './components/u
  * Hackathon milestones M4–M13 live in components/ (see PRD §9). The post-hackathon
  * iteration adds the accessibility panel (themes, colour-vision palettes, text size,
  * readable font, reduced motion, read aloud), undo, search & filters, phone layout,
- * JSON backup and prompt history — see PRD §14.
+ * JSON backup and prompt history — see PRD §14 — plus a prototype sign-in, a profile
+ * page and free-text assignees (§15).
  */
 export default function App() {
+  // Preferences apply everywhere, including the sign-in screen.
+  const prefsApi = usePrefs();
+  const [session, setSession] = useLocalStorage('vibetracker.session', null);
+  const [lastProfile, setLastProfile] = useLocalStorage('vibetracker.lastProfile', null);
+
+  if (!session) {
+    return (
+      <LoginScreen
+        lastProfile={lastProfile}
+        onSignIn={(s) => {
+          setSession(s);
+          if (!s.guest) setLastProfile(s);
+          window.location.hash = '#/';
+        }}
+      />
+    );
+  }
+  return (
+    <Tracker
+      prefsApi={prefsApi}
+      session={session}
+      setSession={(s) => {
+        setSession(s);
+        if (s && !s.guest) setLastProfile(s);
+      }}
+      onSignOut={() => {
+        if (!session.guest) setLastProfile(session);
+        setSession(null);
+        window.location.hash = '';
+      }}
+    />
+  );
+}
+
+/** Track the hash so the profile page has its own URL and the Back button works. */
+function useHashRoute() {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const on = () => {
+      setHash(window.location.hash);
+      // Move focus to the new page's main region so screen readers announce the change.
+      requestAnimationFrame(() => document.getElementById('board')?.focus());
+    };
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  return hash.startsWith('#/profile') ? 'profile' : 'board';
+}
+
+function Tracker({ prefsApi, session, setSession, onSignOut }) {
   const [tasks, setTasks] = useLocalStorage('vibetracker.tasks', seedTasks);
   const [anchors, setAnchors] = useLocalStorage('vibetracker.anchors', DEFAULT_ANCHORS);
-  const [prefs, updatePrefs, resetPrefs] = usePrefs();
+  const [prefs, updatePrefs, resetPrefs] = prefsApi;
   const speech = useSpeech(prefs.speechRate);
+  const view = useHashRoute();
+  const me = session.guest ? null : session.name;
+  const people = useMemo(() => peopleFrom(tasks, me), [tasks, me]);
+  const newTask = useCallback(() => emptyTask(me ?? people[0]), [me, people]);
 
   const [editing, setEditing] = useState(null); // a Task (id '' = new) or null
   const [dialog, setDialog] = useState(null); // 'settings' | 'help' | null
@@ -106,6 +164,10 @@ export default function App() {
     if (isNew) setActiveStage(t.status);
   };
 
+  const renameAssignee = (from, to) => {
+    setTasks((all) => all.map((x) => (x.assignee.toLowerCase() === from.toLowerCase() ? { ...x, assignee: to } : x)));
+  };
+
   const deleteTask = (id) => {
     const t = tasks.find((x) => x.id === id);
     const before = tasks;
@@ -174,7 +236,7 @@ export default function App() {
       if (!prefs.shortcuts || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
-        setEditing(emptyTask());
+        setEditing(newTask());
       } else if (e.key === '/') {
         e.preventDefault();
         searchRef.current?.focus();
@@ -188,7 +250,7 @@ export default function App() {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [anyDialog, prefs.shortcuts, undo]);
+  }, [anyDialog, prefs.shortcuts, undo, newTask]);
 
   const boardProps = {
     onOpen: setEditing,
@@ -199,6 +261,7 @@ export default function App() {
     now,
     speech,
     prefs,
+    people,
   };
 
   return (
@@ -239,36 +302,62 @@ export default function App() {
               <Icon.access className="h-5 w-5" />
               <span className="hidden md:inline">Accessibility</span>
             </button>
-            <button type="button" onClick={() => setEditing(emptyTask())} className={`${btnPrimary} hidden md:inline-flex`} aria-keyshortcuts="N">
+            <button type="button" onClick={() => setEditing(newTask())} className={`${btnPrimary} hidden md:inline-flex`} aria-keyshortcuts="N">
               <Icon.plus /> New task
             </button>
+            <a
+              href="#/profile"
+              aria-current={view === 'profile' ? 'page' : undefined}
+              aria-label={`Your profile: ${session.name}`}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary md:min-h-0 md:min-w-0"
+            >
+              <Avatar name={session.name} size="h-9 w-9 text-xs" />
+            </a>
           </nav>
         </div>
       </header>
 
-      <main id="board" tabIndex={-1} className="px-4 pb-28 pt-4 focus:outline-none md:px-6 md:pb-10">
-        {!prefs.welcomeDismissed && <Welcome onDismiss={() => updatePrefs({ welcomeDismissed: true })} onHelp={() => setDialog('help')} />}
-
-        <AnchorBoard anchors={anchors} onChange={(id, url) => setAnchors((all) => all.map((a) => (a.id === id ? { ...a, url } : a)))} defaultOpen={isWide} />
-
-        <div className="mb-4 flex flex-col gap-3">
-          <DriverStrip
-            tasks={tasks}
-            owner={filters.owner}
-            onToggleOwner={(name) => setFilters((f) => ({ ...f, owner: f.owner === name ? 'all' : name }))}
-          />
-          <FilterBar filters={filters} setFilters={setFilters} shown={visibleTasks.length} total={tasks.length} searchRef={searchRef} />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Legend />
-            <p className="hidden text-xs text-ink-muted md:block">
-              Drag cards between columns — or focus a card and press <kbd className="rounded border border-surface-line px-1 font-mono">Alt</kbd> +{' '}
-              <kbd className="rounded border border-surface-line px-1 font-mono">←</kbd>/<kbd className="rounded border border-surface-line px-1 font-mono">→</kbd>
-            </p>
+      {view === 'profile' ? (
+        <ProfilePage
+          session={session}
+          tasks={tasks}
+          now={now}
+          onSave={(next) => {
+            setSession(next);
+            notify('Profile saved.');
+          }}
+          onRenameTasks={renameAssignee}
+          onOpenTask={setEditing}
+          onSignOut={onSignOut}
+          onOpenSettings={() => setDialog('settings')}
+          onExport={exportBackup}
+        />
+      ) : (
+        <main id="board" tabIndex={-1} className="px-4 pb-28 pt-4 focus:outline-none md:px-6 md:pb-10">
+          {!prefs.welcomeDismissed && <Welcome onDismiss={() => updatePrefs({ welcomeDismissed: true })} onHelp={() => setDialog('help')} />}
+  
+          <AnchorBoard anchors={anchors} onChange={(id, url) => setAnchors((all) => all.map((a) => (a.id === id ? { ...a, url } : a)))} defaultOpen={isWide} />
+  
+          <div className="mb-4 flex flex-col gap-3">
+            <DriverStrip
+              tasks={tasks}
+              people={people}
+              owner={filters.owner}
+              onToggleOwner={(name) => setFilters((f) => ({ ...f, owner: f.owner === name ? 'all' : name }))}
+            />
+            <FilterBar filters={filters} setFilters={setFilters} shown={visibleTasks.length} total={tasks.length} searchRef={searchRef} people={people} />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Legend />
+              <p className="hidden text-xs text-ink-muted md:block">
+                Drag cards between columns — or focus a card and press <kbd className="rounded border border-surface-line px-1 font-mono">Alt</kbd> +{' '}
+                <kbd className="rounded border border-surface-line px-1 font-mono">←</kbd>/<kbd className="rounded border border-surface-line px-1 font-mono">→</kbd>
+              </p>
+            </div>
           </div>
-        </div>
-
-        <Board allTasks={tasks} visibleTasks={visibleTasks} filtered={filtered} activeStage={activeStage} setActiveStage={setActiveStage} {...boardProps} />
-      </main>
+  
+          <Board allTasks={tasks} visibleTasks={visibleTasks} filtered={filtered} activeStage={activeStage} setActiveStage={setActiveStage} {...boardProps} />
+        </main>
+      )}
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-surface-line px-4 py-4 pb-24 text-xs text-ink-muted md:px-6 md:pb-4">
         <span>Vibe Ledger · UXD Vibecoding Hackathon 2026 · data stays in this browser</span>
@@ -280,7 +369,7 @@ export default function App() {
       {/* Phones: a thumb-reachable floating "New task" button. */}
       <button
         type="button"
-        onClick={() => setEditing(emptyTask())}
+        onClick={() => setEditing(newTask())}
         aria-label="New task"
         className="fixed bottom-5 right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-brand-primary text-surface-page shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent md:hidden"
       >
@@ -297,6 +386,7 @@ export default function App() {
           now={now}
           speech={speech}
           prefs={prefs}
+          people={people}
         />
       )}
       {dialog === 'settings' && (

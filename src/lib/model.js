@@ -11,8 +11,25 @@ export const STAGES = [
   { id: 'done', label: 'Done' },
 ];
 
-// PRD §8 — the only valid values for Task.assignee.
+// PRD §8 — the default people. Since the post-hackathon iteration, Task.assignee is
+// free text: these are suggestions, and any typed name becomes a person on the board.
 export const TEAM = ['Taygun', 'Claude', 'Gemini'];
+
+/** Tidy a typed name: trim, collapse spaces, cap the length. */
+export const normalizeName = (s = '') => s.trim().replace(/\s+/g, ' ').slice(0, 40);
+
+/** Everyone the board knows about: the default team, the signed-in user, then anyone tasks are assigned to. */
+export function peopleFrom(tasks, me) {
+  const out = [];
+  const add = (n) => {
+    const v = normalizeName(n || '');
+    if (v && !out.some((x) => x.toLowerCase() === v.toLowerCase())) out.push(v);
+  };
+  TEAM.forEach(add);
+  if (me) add(me);
+  tasks.forEach((t) => add(t.assignee));
+  return out;
+}
 
 export const AI_TOOLS = ['Claude', 'ChatGPT', 'Cursor', 'Lovable', 'Replit', 'Other'];
 
@@ -137,13 +154,13 @@ export const DEFAULT_ANCHORS = [
   { id: 'documentation', label: 'Documentation', url: null },
 ];
 
-export const emptyTask = () => ({
+export const emptyTask = (assignee = TEAM[0]) => ({
   id: '',
   title: '',
   description: '',
   type: 'feature',
   status: 'todo',
-  assignee: TEAM[0],
+  assignee,
   dueDate: '',
   createdDate: todayISO(),
   context: CONTEXT_TEMPLATE,
@@ -356,7 +373,7 @@ export function makeBackup(tasks, anchors) {
 
 /**
  * Validate and normalise an imported backup. Unknown or malformed fields are
- * repaired where safe (e.g. an unknown assignee becomes TEAM[0]); anything that
+ * repaired where safe (e.g. a missing assignee becomes TEAM[0]); anything that
  * can't be repaired throws an Error with a human-readable message.
  */
 export function parseBackup(text) {
@@ -376,7 +393,7 @@ export function parseBackup(text) {
       description: typeof t.description === 'string' ? t.description : '',
       type: t.type === 'bug' ? 'bug' : 'feature',
       status: stageIds.includes(t.status) ? t.status : 'todo',
-      assignee: TEAM.includes(t.assignee) ? t.assignee : TEAM[0],
+      assignee: typeof t.assignee === 'string' && normalizeName(t.assignee) ? normalizeName(t.assignee) : TEAM[0],
       dueDate: typeof t.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.dueDate) ? t.dueDate : null,
       createdDate: typeof t.createdDate === 'string' ? t.createdDate : todayISO(),
       context: typeof t.context === 'string' ? t.context : '',

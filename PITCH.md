@@ -30,7 +30,7 @@ Jira, Linear and Notion are overkill, take hours to set up, and don't know what 
 
 ## Live demo — click by click
 
-Before you start: open the deployed URL and click **Reset demo data** in the footer so the board looks the same every time.
+Before you start: open the deployed URL, click **Continue with the demo account**, then open **Accessibility → Reset demo data** (or the footer link) so the board looks the same every time.
 
 1. **Overview.** Point at the four columns (To Do → In Progress → Review → Done), the **Final deliverables** strip pinned on top, and the **driver strip** showing who is driving how many tasks.
 2. **Feature vs bug (M6).** Green stripe + star = feature, pink stripe + bug icon = bug. Colour is never the only signal.
@@ -41,6 +41,9 @@ Before you start: open the deployed URL and click **Reset demo data** in the foo
 7. **Secret sauce (M12).** Drag a card from Review to Done ("… shipped. Nice."). Then focus a card with Tab and press **Alt + →** to show the keyboard alternative.
 8. **Deliverables (M11).** Paste the demo URL into the **Demo** slot. The dot turns green and the counter goes to 1/4.
 9. **Persistence.** Refresh the page — everything is still there (localStorage).
+10. **Accessibility (post-hackathon).** Open **Accessibility**: switch to high contrast, then red–green friendly, then grayscale — every state still reads by icon and text. Press the speaker on a card to have it read aloud.
+11. **On a phone.** Show the column tabs, the “Move to” menu and the floating + button.
+12. **Profile.** Click your avatar: open/overdue/done counts and *My tasks*.
 
 ## Design & accessibility points to mention
 

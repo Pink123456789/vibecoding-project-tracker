@@ -50,7 +50,7 @@ Task = {
   description: string,
   type: 'feature' | 'bug',       // visual color coding
   status: 'todo' | 'in-progress' | 'review' | 'done',
-  assignee: string,              // one of the three teammate names from §8
+  assignee: string,              // free text since §15; the §8 names are suggestions
   dueDate: string | null,        // ISO date 'YYYY-MM-DD'
   createdDate: string,           // ISO date 'YYYY-MM-DD'
 
@@ -102,7 +102,7 @@ Fill these in before tagging `prd-done`:
 | Teammate B | Claude (AI pair) | n/a — AI collaborator |
 | Teammate C | Gemini (AI pair) | n/a — AI collaborator |
 
-These three names become the **only** allowed values for `Task.assignee`. No auth — just a dropdown.
+These three names are the default people. Since §15, `Task.assignee` is free text: these names are offered as suggestions and any typed name becomes a person on the board.
 
 > **Team note.** Taygun is working solo. Instead of inventing classmates, the two remaining slots are the AI tools he actually pairs with. "Hand off to Claude" means: this task's next step is an AI session, and the Copy Context button produces the briefing for it.
 
@@ -197,7 +197,16 @@ After the hackathon the tracker was extended with the accessibility, usability a
 | Small screens | One-column tab bar, "Move to" menu instead of drag, full-screen editor, floating New-task button, 44 px touch targets, collapsible deliverables, installable (web app manifest) | Phones |
 | Data | Export / import a JSON backup with validation; prompt history with view and restore | Accessibility & data panel, task editor |
 
-**Verification.** Automated checks with axe-core (WCAG 2.2 A/AA + best practice) across 30 combinations of theme, colour palette, screen size and open dialog report 0 violations. Lighthouse accessibility went from 96 to 100 on both mobile and desktop.
+**Verification.** Automated checks with axe-core (WCAG 2.2 A/AA + best practice) across 54 combinations of theme, colour palette, screen size and page (sign-in, board, task editor, settings, profile) report 0 violations. Lighthouse accessibility went from 96 to 100 on both mobile and desktop.
+
+## 15. Prototype sign-in, profile and free-text assignees
+
+- **Sign-in (prototype).** There is no backend, so this is a front-end simulation, labelled as such on screen. Any email + password is accepted; the password is never stored. One-click **demo account** and **guest** options mean an assessor never has to register. Follows WCAG 3.3.8 Accessible Authentication (paste allowed, `autocomplete` for password managers, show/hide password, no puzzles).
+- **Session** is kept in `localStorage` (`vibetracker.session`); signing back in with the same email restores the last profile (`vibetracker.lastProfile`).
+  `Session = { name, email, role, bio, preferredTool, guest, memberSince, signedInAt }`
+- **Profile page** (`#/profile`, works with the browser Back button): avatar, role, member since; counts of open, due/overdue, done tasks and Context versions; *My tasks* list that opens the editor; editable name, email, role, favourite AI tool and bio (renaming can move your tasks to the new name); sign out; shortcuts to accessibility settings and backup export.
+- **Free-text assignee.** The editor's Assignee field is a text box with suggestions (`<datalist>`) from everyone already on the board. Names are trimmed and matched case-insensitively, so "claude" reuses "Claude". New people appear in the hand-off menu, the driver strip and the owner filter, each with a stable avatar colour.
+- **Out of scope / future work:** real accounts, password checks and a shared synced board need a backend (e.g. Supabase or Firebase Auth).
 
 ---
 

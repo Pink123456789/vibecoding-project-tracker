@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { DUE_FILTERS, TEAM, filtersActive, EMPTY_FILTERS } from '../lib/model.js';
+import { DUE_FILTERS, filtersActive, EMPTY_FILTERS } from '../lib/model.js';
 import { Avatar, DUE_STYLE, Icon, TYPE_STYLE, TypeIcon, btnGhost, fieldCls } from './ui.jsx';
 
 // --- M11 Deliverable anchors (collapsible so it doesn't push the board off a phone screen) ---
@@ -97,10 +97,10 @@ export function AnchorBoard({ anchors, onChange, defaultOpen }) {
 
 // --- M7 Driver strip — now doubles as an owner filter -----------------------------------
 
-export function DriverStrip({ tasks, owner, onToggleOwner }) {
+export function DriverStrip({ tasks, people, owner, onToggleOwner }) {
   return (
     <section aria-label="Who is driving what (select to filter)" className="flex flex-wrap gap-2">
-      {TEAM.map((name) => {
+      {people.map((name) => {
         const open = tasks.filter((t) => t.assignee === name && t.status !== 'done').length;
         const pressed = owner === name;
         return (
@@ -127,7 +127,7 @@ export function DriverStrip({ tasks, owner, onToggleOwner }) {
 
 // --- Search & filters ---------------------------------------------------------------------
 
-export function FilterBar({ filters, setFilters, shown, total, searchRef }) {
+export function FilterBar({ filters, setFilters, shown, total, searchRef, people }) {
   const [openMobile, setOpenMobile] = useState(false);
   const active = filtersActive(filters);
   const set = (k) => (e) => setFilters((f) => ({ ...f, [k]: e.target.value }));
@@ -169,7 +169,7 @@ export function FilterBar({ filters, setFilters, shown, total, searchRef }) {
         </label>
         <select id="filter-owner" value={filters.owner} onChange={set('owner')} className={selCls}>
           <option value="all">Anyone</option>
-          {TEAM.map((n) => (
+          {people.map((n) => (
             <option key={n} value={n}>
               {n}
             </option>

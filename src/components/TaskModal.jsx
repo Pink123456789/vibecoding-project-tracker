@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { AI_TOOLS, STAGES, TEAM, formatDateTime, renderMarkdown, taskToSpeech, timeAgo } from '../lib/model.js';
+import { AI_TOOLS, STAGES, formatDateTime, normalizeName, renderMarkdown, taskToSpeech, timeAgo } from '../lib/model.js';
 import { CopyContextButton } from './Board.jsx';
 import { Dialog, DialogHeader, Icon, SpeakButton, TYPE_STYLE, TypeChip, TypeIcon, btnGhost, btnPrimary, fieldCls, labelCls } from './ui.jsx';
 
@@ -141,7 +141,7 @@ function ContextField({ draft, setDraft, now, onRestored }) {
 
 // --- M5 add / edit / delete modal ---------------------------------------------------------
 
-export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, speech, prefs }) {
+export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, speech, prefs, people }) {
   const isNew = !task.id;
   const [draft, setDraft] = useState({
     context: '',
@@ -153,7 +153,9 @@ export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, spee
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [titleError, setTitleError] = useState(false);
+  const [assigneeError, setAssigneeError] = useState(false);
   const titleRef = useRef(null);
+  const assigneeRef = useRef(null);
 
   const set = (field) => (e) => setDraft((d) => ({ ...d, [field]: e.target.value }));
   const close = () => {
@@ -168,8 +170,16 @@ export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, spee
       titleRef.current?.focus();
       return;
     }
+    const assignee = normalizeName(draft.assignee);
+    if (!assignee) {
+      setAssigneeError(true);
+      assigneeRef.current?.focus();
+      return;
+    }
+    // Match an existing person regardless of case, so "claude" doesn't create a second Claude.
+    const known = people.find((p) => p.toLowerCase() === assignee.toLowerCase());
     speech.stop();
-    onSave({ ...draft, title: draft.title.trim(), dueDate: draft.dueDate || null });
+    onSave({ ...draft, title: draft.title.trim(), assignee: known ?? assignee, dueDate: draft.dueDate || null });
   };
 
   const asTask = { ...draft, title: draft.title || 'Untitled task', dueDate: draft.dueDate || null };
@@ -250,13 +260,35 @@ export function TaskModal({ task, onSave, onDelete, onClose, onNotify, now, spee
           <label htmlFor="f-assignee" className={labelCls}>
             Assignee
           </label>
-          <select id="f-assignee" value={draft.assignee} onChange={set('assignee')} className={fieldCls}>
-            {TEAM.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
+          {/* Free text with suggestions: pick a teammate or type anyone's name. */}
+          <input
+            id="f-assignee"
+            ref={assigneeRef}
+            list="people-list"
+            autoComplete="off"
+            value={draft.assignee}
+            onChange={(e) => {
+              set('assignee')(e);
+              if (e.target.value.trim()) setAssigneeError(false);
+            }}
+            aria-invalid={assigneeError}
+            aria-describedby={assigneeError ? 'f-assignee-err f-assignee-hint' : 'f-assignee-hint'}
+            className={`${fieldCls} ${assigneeError ? '!border-due-overdue' : ''}`}
+            placeholder="Type a name…"
+          />
+          <datalist id="people-list">
+            {people.map((n) => (
+              <option key={n} value={n} />
             ))}
-          </select>
+          </datalist>
+          <p id="f-assignee-hint" className="mt-1 text-xs text-ink-muted">
+            Pick someone or type a new name.
+          </p>
+          {assigneeError && (
+            <p id="f-assignee-err" role="alert" className="mt-1 text-xs text-due-overdue">
+              Say who owns this task.
+            </p>
+          )}
         </div>
 
         <div>

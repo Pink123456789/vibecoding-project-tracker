@@ -172,14 +172,30 @@ export const PERSON_STYLE = {
   Claude: 'bg-person-claude text-surface-page',
   Gemini: 'bg-person-gemini text-surface-page',
 };
-const initials = (name) => name.slice(0, 2).toUpperCase();
+// Anyone else gets a stable colour from their name (all pass contrast with text-surface-page).
+const EXTRA_STYLES = [
+  'bg-feature text-surface-page',
+  'bg-due-soon text-surface-page',
+  'bg-bug text-surface-page',
+  'bg-brand-primary text-surface-page',
+  'bg-brand-accent text-surface-page',
+  'bg-due-warning text-surface-page',
+];
+export const personStyle = (name = '') => {
+  if (PERSON_STYLE[name]) return PERSON_STYLE[name];
+  let h = 0;
+  for (const ch of name.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return EXTRA_STYLES[h % EXTRA_STYLES.length];
+};
+export const initials = (name = '') => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (parts[0] || '?').slice(0, 2).toUpperCase();
+};
 
 export function Avatar({ name, size = 'h-7 w-7 text-[0.6875rem]' }) {
   return (
-    <span
-      aria-hidden="true"
-      className={`grid shrink-0 place-items-center rounded-full font-mono font-semibold ${size} ${PERSON_STYLE[name] ?? 'bg-surface-raised text-ink-primary'}`}
-    >
+    <span aria-hidden="true" className={`grid shrink-0 place-items-center rounded-full font-mono font-semibold ${size} ${personStyle(name)}`}>
       {initials(name)}
     </span>
   );
@@ -227,7 +243,9 @@ export function Dialog({ titleId, onClose, initialFocusRef, children, maxWidth =
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
+    // Backdrop click is a mouse shortcut for closing; Esc and the Close button are the keyboard equivalents.
     <div
+      role="presentation"
       className="fixed inset-0 z-40 flex items-end justify-center bg-black/60 sm:items-center sm:p-4"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
