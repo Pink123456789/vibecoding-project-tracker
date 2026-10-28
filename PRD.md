@@ -215,7 +215,7 @@ A think-aloud test with one participant from outside the university gave a SUS s
 - **Visible Edit button on every card.** Editing used to require clicking the card itself, which nothing on the card signalled (Norman: signifiers; Nielsen #6 recognition rather than recall).
 - **Clearer task editor.** Fields are grouped under Details, Planning and Context; labels are sentence case at normal size instead of small upper-case; the title field is larger (Nielsen #8 aesthetic and minimalist design). The new label style is used on every form for consistency.
 
-Screenshots 26–29 in `docs/evidence/` show before and after. axe still reports 0 violations across all 54 scenarios.
+Screenshots 26–29 in `docs/evidence/` show before and after; 30–32 put them side by side. axe still reports 0 violations across all 54 scenarios.
 
 ---
 
